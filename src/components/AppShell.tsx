@@ -1,0 +1,48 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { BottomNav } from "./BottomNav";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { currentUser } from "@/lib/data";
+import { SosModal } from "./SosModal";
+import { Bell } from "lucide-react";
+
+export function AppShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex h-screen w-full flex-col bg-background">
+      <header className="flex h-16 items-center justify-between border-b bg-card px-4 shadow-sm md:px-6">
+        <div className="flex items-center gap-2">
+           <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-6 w-6 text-primary"
+            >
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+          <h1 className="font-headline text-lg font-bold text-foreground">Colonia Segura</h1>
+        </div>
+        <div className="flex items-center gap-4">
+          <Bell className="h-6 w-6 text-muted-foreground" />
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+            <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+          </Avatar>
+        </div>
+      </header>
+      
+      <main className="flex-1 overflow-y-auto p-4 pb-24 md:p-6">
+        {children}
+      </main>
+
+      <SosModal />
+      <BottomNav />
+    </div>
+  );
+}

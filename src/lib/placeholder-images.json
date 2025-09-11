@@ -1,3 +1,46 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "avatar1",
+      "description": "Avatar for user Ana",
+      "imageUrl": "https://picsum.photos/seed/1/100/100",
+      "imageHint": "woman portrait"
+    },
+    {
+      "id": "avatar2",
+      "description": "Avatar for user Carlos",
+      "imageUrl": "https://picsum.photos/seed/2/100/100",
+      "imageHint": "man portrait"
+    },
+    {
+      "id": "avatar3",
+      "description": "Avatar for user Elena",
+      "imageUrl": "https://picsum.photos/seed/3/100/100",
+      "imageHint": "woman face"
+    },
+    {
+      "id": "avatar4",
+      "description": "Avatar for user Javier",
+      "imageUrl": "https://picsum.photos/seed/4/100/100",
+      "imageHint": "man face"
+    },
+    {
+      "id": "avatar5",
+      "description": "Avatar for family member Mateo",
+      "imageUrl": "https://picsum.photos/seed/5/100/100",
+      "imageHint": "child portrait"
+    },
+    {
+      "id": "avatar6",
+      "description": "Avatar for family member Abuela Rosa",
+      "imageUrl": "https://picsum.photos/seed/6/100/100",
+      "imageHint": "elderly woman"
+    },
+    {
+      "id": "avatar7",
+      "description": "Avatar for family member Sofía",
+      "imageUrl": "https://picsum.photos/seed/7/100/100",
+      "imageHint": "girl portrait"
+    }
+  ]
 }
