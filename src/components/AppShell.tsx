@@ -6,7 +6,7 @@ import React from "react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SosModal } from "./SosModal";
-import { Bell, LogOut, User as UserIcon } from "lucide-react";
+import { Bell, LogOut, User as UserIcon, Home, MessageSquare, Map } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { User } from "firebase/auth";
 import { BottomNavBar } from "./BottomNavBar";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { Button } from "./ui/button";
+
 
 export type AlertCategory = "Robo" | "Accidentes" | "Desastres Naturales" | "Personas Sospechosas";
 
@@ -34,27 +38,60 @@ export interface SosAlert {
   category: AlertCategory;
 }
 
+const navItems = [
+  { href: "/", label: "Grupo", icon: Home },
+  { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/family-map", label: "Familia", icon: Map },
+];
+
 export function AppShell({ user, onSignOut, children }: { user: User, onSignOut: () => void, children: ReactNode }) {
+  const pathname = usePathname();
+
   return (
     <div className="flex h-screen w-full flex-col bg-background">
       <header className="flex h-16 shrink-0 items-center justify-between border-b bg-card px-4 shadow-sm md:px-6">
-        <div className="flex items-center gap-2">
-           <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-6 w-6 text-primary"
-            >
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
-            <h1 className="font-headline text-lg font-bold text-foreground truncate">Vigilancia Vecinal</h1>
+        <div className="flex items-center gap-4">
+           <Link href="/" className="flex items-center gap-2">
+             <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-6 w-6 text-primary"
+              >
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              <h1 className="font-headline hidden text-lg font-bold text-foreground truncate sm:block">Vigilancia Vecinal</h1>
+           </Link>
         </div>
+
+        <nav className="hidden items-center gap-2 md:flex">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Button key={item.href} asChild variant="ghost" className={cn(isActive && "bg-secondary")}>
+                 <Link
+                  href={item.href}
+                  className={cn(
+                    "flex items-center justify-center gap-2 text-sm font-medium transition-colors",
+                    isActive
+                      ? "text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </Link>
+              </Button>
+            );
+          })}
+        </nav>
+
         <div className="flex items-center gap-4 ml-auto">
           <Bell className="h-6 w-6 text-muted-foreground" />
           <DropdownMenu>
