@@ -14,12 +14,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Siren, Mic, Video, MapPin, Send, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
+import { useFirebase, addDocumentNonBlocking } from "@/firebase";
+import { collection, serverTimestamp } from "firebase/firestore";
+import type { User } from "firebase/auth";
 
 type SosModalProps = {
-    onSendSos: (message: string, location: string) => void;
+    user: User;
 }
 
-export function SosModal({ onSendSos }: SosModalProps) {
+export function SosModal({ user }: SosModalProps) {
+  const { firestore } = useFirebase();
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [location, setLocation] = useState("Ubicación no disponible");
@@ -32,8 +36,6 @@ export function SosModal({ onSendSos }: SosModalProps) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const { latitude, longitude } = position.coords;
-            // For simplicity, we'll just show the coordinates.
-            // A production app would use a geocoding service to get an address.
             setLocation(`Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}`);
           },
           () => {
@@ -61,7 +63,22 @@ export function SosModal({ onSendSos }: SosModalProps) {
         return;
     }
     
-    onSendSos(message, location);
+    if (!firestore) {
+        toast({ title: "Error", description: "La base de datos no está disponible.", variant: "destructive" });
+        return;
+    }
+
+    const alertsCollection = collection(firestore, 'sos-alerts');
+    const newAlert = {
+        userId: user.uid,
+        userName: user.displayName || "Usuario Anónimo",
+        userAvatarUrl: user.photoURL || "",
+        message,
+        location,
+        timestamp: serverTimestamp(),
+    };
+
+    addDocumentNonBlocking(alertsCollection, newAlert);
     
     toast({
         title: "¡Alerta de Auxilio Enviada!",

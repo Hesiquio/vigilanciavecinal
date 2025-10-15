@@ -1,10 +1,12 @@
 "use client";
 
-import type { SosAlert } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { MapPin, Phone, MessageCircle } from "lucide-react";
 import GoogleMap from "./GoogleMap";
+import { SosAlert } from "../AppShell";
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 type AlertCardProps = {
   alert: SosAlert;
@@ -23,6 +25,12 @@ const parseLocation = (locationStr: string): { lat: number; lng: number } | null
   return null;
 }
 
+const formatTimestamp = (timestamp: SosAlert['timestamp']): string => {
+  if (!timestamp) return 'Ahora mismo';
+  const date = new Date(timestamp.seconds * 1000);
+  return `hace ${formatDistanceToNow(date, { locale: es })}`;
+}
+
 
 export function AlertCard({ alert }: AlertCardProps) {
   const markerPosition = parseLocation(alert.location);
@@ -31,13 +39,13 @@ export function AlertCard({ alert }: AlertCardProps) {
     <div className="space-y-4">
       <div className="flex items-start gap-4">
         <Avatar className="h-12 w-12 border-2 border-destructive">
-          <AvatarImage src={alert.user.avatarUrl} alt={alert.user.name} />
-          <AvatarFallback>{alert.user.name.charAt(0)}</AvatarFallback>
+          <AvatarImage src={alert.userAvatarUrl} alt={alert.userName} />
+          <AvatarFallback>{alert.userName?.charAt(0)}</AvatarFallback>
         </Avatar>
         <div className="flex-1">
           <div className="flex items-center justify-between">
-            <p className="font-bold text-foreground">{alert.user.name}</p>
-            <p className="text-xs text-muted-foreground">{alert.timestamp}</p>
+            <p className="font-bold text-foreground">{alert.userName}</p>
+            <p className="text-xs text-muted-foreground">{formatTimestamp(alert.timestamp)}</p>
           </div>
           <p className="text-sm text-foreground">{alert.message}</p>
           <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">

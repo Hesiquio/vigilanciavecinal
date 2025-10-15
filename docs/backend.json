@@ -1,342 +1,137 @@
 {
   "entities": {
-    "User": {
+    "UserProfile": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "User",
+      "title": "User Profile",
+      "description": "Represents a user's public profile information.",
       "type": "object",
-      "description": "Represents a user in the Colonia Segura application.",
       "properties": {
-        "id": {
+        "name": {
           "type": "string",
-          "description": "Unique identifier for the User entity."
+          "description": "The user's display name."
         },
-        "userName": {
+        "avatarUrl": {
           "type": "string",
-          "description": "The user's username."
+          "description": "URL for the user's avatar image.",
+          "format": "uri"
         },
         "email": {
           "type": "string",
           "description": "The user's email address.",
           "format": "email"
-        },
-        "phoneNumber": {
-          "type": "string",
-          "description": "The user's phone number."
-        },
-        "coloniaId": {
-          "type": "string",
-          "description": "Reference to Colonia. (Relationship: Colonia 1:N User)"
         }
       },
-      "required": [
-        "id",
-        "userName",
-        "email",
-        "phoneNumber",
-        "coloniaId"
-      ]
-    },
-    "Colonia": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Colonia",
-      "type": "object",
-      "description": "Represents a colonia (neighborhood) in the application.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Colonia entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the colonia."
-        },
-        "location": {
-          "type": "string",
-          "description": "GeoJSON data representing the colonia's boundaries."
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "location"
-      ]
+      "required": ["name", "email"]
     },
     "SosAlert": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "SosAlert",
-      "type": "object",
+      "title": "SOS Alert",
       "description": "Represents an SOS alert sent by a user.",
+      "type": "object",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the SosAlert entity."
-        },
         "userId": {
           "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N SosAlert)"
+          "description": "The ID of the user who sent the alert."
         },
-        "coloniaId": {
+        "userName": {
           "type": "string",
-          "description": "Reference to Colonia. (Relationship: Colonia 1:N SosAlert)"
+          "description": "The name of the user who sent the alert."
+        },
+        "userAvatarUrl": {
+          "type": "string",
+          "description": "The avatar URL of the user who sent the alert."
         },
         "message": {
           "type": "string",
           "description": "Text message accompanying the SOS alert."
         },
-        "audioUrl": {
-          "type": "string",
-          "description": "URL of the audio recording accompanying the SOS alert."
-        },
-        "videoUrl": {
-          "type": "string",
-          "description": "URL of the video recording accompanying the SOS alert."
-        },
         "location": {
           "type": "string",
-          "description": "GeoJSON data representing the location of the SOS alert."
+          "description": "Location from where the alert was sent."
         },
         "timestamp": {
-          "type": "string",
-          "description": "Timestamp of when the SOS alert was sent.",
-          "format": "date-time"
+          "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp"
         }
       },
-      "required": [
-        "id",
-        "userId",
-        "coloniaId",
-        "timestamp"
-      ]
+      "required": ["userId", "userName", "message", "location", "timestamp"]
     },
-    "ChatMessage": {
+    "SurveillanceZone": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ChatMessage",
+      "title": "Surveillance Zone",
+      "description": "Represents a geographical area for neighborhood watch.",
       "type": "object",
-      "description": "Represents a chat message within a colonia.",
       "properties": {
-        "id": {
+        "name": {
           "type": "string",
-          "description": "Unique identifier for the ChatMessage entity."
+          "description": "Name of the surveillance zone (e.g., 'Colonia Centro')."
         },
-        "userId": {
-          "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N ChatMessage)"
-        },
-        "coloniaId": {
-          "type": "string",
-          "description": "Reference to Colonia. (Relationship: Colonia 1:N ChatMessage)"
-        },
-        "message": {
-          "type": "string",
-          "description": "The content of the chat message."
-        },
-        "timestamp": {
-          "type": "string",
-          "description": "Timestamp of when the chat message was sent.",
-          "format": "date-time"
+        "polygon": {
+          "type": "array",
+          "description": "An array of coordinates defining the zone's boundary.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "lat": { "type": "number" },
+              "lng": { "type": "number" }
+            },
+            "required": ["lat", "lng"]
+          }
         }
       },
-      "required": [
-        "id",
-        "userId",
-        "coloniaId",
-        "message",
-        "timestamp"
-      ]
-    },
-    "Geofence": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Geofence",
-      "type": "object",
-      "description": "Represents a geofence boundary for a user.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Geofence entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N Geofence)"
-        },
-        "latitude": {
-          "type": "number",
-          "description": "Latitude of the geofence center."
-        },
-        "longitude": {
-          "type": "number",
-          "description": "Longitude of the geofence center."
-        },
-        "radius": {
-          "type": "number",
-          "description": "Radius of the geofence in meters."
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "latitude",
-        "longitude",
-        "radius"
-      ]
-    },
-    "Alert": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Alert",
-      "type": "object",
-      "description": "Represents an alert triggered when a user crosses a geofence boundary.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Alert entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N Alert)"
-        },
-        "geofenceId": {
-          "type": "string",
-          "description": "Reference to Geofence. (Relationship: Geofence 1:N Alert)"
-        },
-        "timestamp": {
-          "type": "string",
-          "description": "Timestamp of when the alert was triggered.",
-          "format": "date-time"
-        },
-        "alertType": {
-          "type": "string",
-          "description": "Type of alert (e.g., 'geofence_exit', 'geofence_enter')."
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "geofenceId",
-        "timestamp",
-        "alertType"
-      ]
+      "required": ["name", "polygon"]
     }
   },
   "auth": {
     "providers": [
       "password",
-      "anonymous"
+      "anonymous",
+      "google.com"
     ]
   },
   "firestore": {
     "structure": [
       {
-        "path": "/colonias/{coloniaId}",
-        "definition": {
-          "entityName": "Colonia",
-          "schema": {
-            "$ref": "#/backend/entities/Colonia"
-          },
-          "description": "Stores information about each colonia. Publicly readable for enabling users to find emergency group information based on geolocation.",
-          "params": [
-            {
-              "name": "coloniaId",
-              "description": "The unique identifier of the colonia."
-            }
-          ]
-        }
-      },
-      {
         "path": "/users/{userId}",
         "definition": {
-          "entityName": "User",
+          "entityName": "UserProfile",
           "schema": {
-            "$ref": "#/backend/entities/User"
+            "$ref": "#/backend/entities/UserProfile"
           },
-          "description": "Stores user profiles. Path-based ownership, ensuring only the user can access their data.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            }
-          ]
+          "description": "Stores public user profiles. Writable by the user themselves.",
+          "params": [{
+            "name": "userId",
+            "description": "The unique ID of the user."
+          }]
         }
       },
       {
-        "path": "/colonias/{coloniaId}/chat_messages/{messageId}",
-        "definition": {
-          "entityName": "ChatMessage",
-          "schema": {
-            "$ref": "#/backend/entities/ChatMessage"
-          },
-          "description": "Stores chat messages within a colonia. Includes denormalized 'coloniaId' for authorization independence.",
-          "params": [
-            {
-              "name": "coloniaId",
-              "description": "The unique identifier of the colonia."
-            },
-            {
-              "name": "messageId",
-              "description": "The unique identifier of the chat message."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/sos_alerts/{alertId}",
+        "path": "/sos-alerts/{alertId}",
         "definition": {
           "entityName": "SosAlert",
           "schema": {
             "$ref": "#/backend/entities/SosAlert"
           },
-          "description": "Stores SOS alerts created by a user. Includes denormalized 'coloniaId' for authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "alertId",
-              "description": "The unique identifier of the SOS alert."
-            }
-          ]
+          "description": "Stores all SOS alerts. Writable by any authenticated user, readable by any authenticated user.",
+          "params": [{
+            "name": "alertId",
+            "description": "The unique ID of the alert."
+          }]
         }
       },
       {
-        "path": "/users/{userId}/geofences/{geofenceId}",
+        "path": "/surveillance-zones/{zoneId}",
         "definition": {
-          "entityName": "Geofence",
+          "entityName": "SurveillanceZone",
           "schema": {
-            "$ref": "#/backend/entities/Geofence"
+            "$ref": "#/backend/entities/SurveillanceZone"
           },
-          "description": "Stores geofences for a user. Path-based ownership.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "geofenceId",
-              "description": "The unique identifier of the geofence."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/alerts/{alertId}",
-        "definition": {
-          "entityName": "Alert",
-          "schema": {
-            "$ref": "#/backend/entities/Alert"
-          },
-          "description": "Stores alerts triggered by geofences. Path-based ownership.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "alertId",
-              "description": "The unique identifier of the alert."
-            }
-          ]
+          "description": "Stores the geographical boundaries for each neighborhood watch group.",
+          "params": [{
+            "name": "zoneId",
+            "description": "The unique ID of the zone."
+          }]
         }
       }
-    ],
-    "reasoning": "The Firestore data structure is designed to support the core features of the Colonia Segura application, focusing on secure neighborhood communication and SOS alerts. It emphasizes authorization independence and efficient data retrieval.\n\n*   `/colonias`: Stores information about each colonia. This collection is publicly readable to facilitate the 'Emergency Group Assignment' feature, enabling users to quickly find their colonia's information.\n*   `/users/{userId}`: Stores user profiles.  This is a path-based ownership model, ensuring only the user can access their data.\n*   `/colonias/{coloniaId}/chat_messages`: Stores chat messages within a colonia. The `coloniaId` is denormalized in each chat message to ensure authorization independence. Security rules will check if the user's `coloniaId` matches the message's `coloniaId`.\n*   `/users/{userId}/sos_alerts`: Stores SOS alerts created by a user. This leverages path-based ownership. The `coloniaId` is denormalized to allow listing all alerts for a given `coloniaId` without needing to `get()` the user document.\n*   `/users/{userId}/geofences`: Stores geofences for a user, using path-based ownership.\n*   `/users/{userId}/alerts`: Stores alerts triggered by geofences, maintaining path-based ownership.\n\nThis structure achieves Authorization Independence by denormalizing the `coloniaId` in the `chat_messages` and `sos_alerts` collections. This eliminates the need for `get()` calls in security rules to verify a user's colonia, enabling atomic operations and improving performance. QAPs (Rules are not Filters) are supported by the structural segregation of user-owned data (under `/users/{userId}`) and colonia-specific data (under `/colonias/{coloniaId}`), allowing for secure list operations based on user roles and colonia membership."
+    ]
   }
 }
