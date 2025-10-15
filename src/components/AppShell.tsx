@@ -26,7 +26,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
-          <h1 className="font-headline text-lg font-bold text-foreground">Colonia Segura</h1>
+          <h1 className="font-headline text-lg font-bold text-foreground">SISTEMA DE VIGILANCIA VECINAL</h1>
         </div>
         <div className="flex items-center gap-4">
           <Bell className="h-6 w-6 text-muted-foreground" />

@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster"
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Colonia Segura',
+  title: 'SISTEMA DE VIGILANCIA VECINAL',
   description: 'Vigilancia vecinal para una comunidad más segura.',
 };
 
