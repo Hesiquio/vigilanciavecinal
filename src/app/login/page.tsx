@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect } from "react";
@@ -5,26 +6,60 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useFirebase } from "@/firebase";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import type { UserProfile } from "@/types";
 
 const provider = new GoogleAuthProvider();
 
 export default function LoginPage() {
-  const { auth, user, isUserLoading } = useFirebase();
+  const { auth, firestore, user, isUserLoading } = useFirebase();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isUserLoading && user) {
-      router.push("/");
+    // This effect handles the case where the user is already logged in
+    // and lands on the login page. It will redirect them.
+    if (!isUserLoading && user && firestore) {
+        const checkUserProfile = async () => {
+            const userDocRef = doc(firestore, "users", user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists() && userDocSnap.data()?.postalCode) {
+                router.push("/");
+            } else {
+                router.push("/settings");
+            }
+        }
+        checkUserProfile();
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, firestore]);
 
   const handleSignIn = async () => {
-    if (auth) {
+    if (auth && firestore) {
       try {
-        await signInWithPopup(auth, provider);
-        router.push("/");
+        const result = await signInWithPopup(auth, provider);
+        const signedInUser = result.user;
+
+        const userDocRef = doc(firestore, "users", signedInUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists() && userDocSnap.data()?.postalCode) {
+          // User profile is complete, go to dashboard
+          router.push("/");
+        } else {
+          // New user or incomplete profile, go to settings to complete it
+          if (!userDocSnap.exists()) {
+             // Create a basic profile if it doesn't exist
+            const newUserProfile: UserProfile = {
+              name: signedInUser.displayName || "",
+              email: signedInUser.email || "",
+              avatarUrl: signedInUser.photoURL || "",
+              postalCode: "",
+            };
+            await setDoc(userDocRef, newUserProfile, { merge: true });
+          }
+          router.push("/settings");
+        }
       } catch (error) {
-        console.error("Error during sign-in:", error);
+        console.error("Error during sign-in or profile check:", error);
       }
     }
   };
