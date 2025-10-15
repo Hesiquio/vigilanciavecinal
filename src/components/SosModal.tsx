@@ -33,6 +33,8 @@ const alertCategories = [
     "Personas Sospechosas",
 ]
 
+const ALL_AUDIENCES = ["neighbors", "family"];
+
 export function SosModal({ user }: SosModalProps) {
   const { firestore } = useFirebase();
   const [isOpen, setIsOpen] = useState(false);
@@ -70,6 +72,10 @@ export function SosModal({ user }: SosModalProps) {
     setAudience(prev => 
         checked ? [...prev, value] : prev.filter(item => item !== value)
     );
+  }
+  
+  const handleSelectAll = () => {
+    setAudience(ALL_AUDIENCES);
   }
 
   const handleSendSos = () => {
@@ -164,14 +170,25 @@ export function SosModal({ user }: SosModalProps) {
                 </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Notificar a:</Label>
+              <div className="flex justify-between items-center">
+                 <Label className="text-sm font-medium">Notificar a:</Label>
+                 <Button variant="link" size="sm" className="p-0 h-auto" onClick={handleSelectAll}>Enviar a todos</Button>
+              </div>
                <div className="grid grid-cols-2 gap-2">
                     <div className="flex items-center gap-2 rounded-md border p-3">
-                        <Checkbox id="audience-neighbors" onCheckedChange={(checked) => handleAudienceChange(!!checked, 'neighbors')} />
+                        <Checkbox 
+                            id="audience-neighbors" 
+                            checked={audience.includes('neighbors')} 
+                            onCheckedChange={(checked) => handleAudienceChange(!!checked, 'neighbors')} 
+                        />
                         <Label htmlFor="audience-neighbors" className="flex items-center gap-2 text-sm font-normal"><ShieldAlert className="h-4 w-4"/> Vecinos</Label>
                     </div>
                      <div className="flex items-center gap-2 rounded-md border p-3">
-                        <Checkbox id="audience-family" onCheckedChange={(checked) => handleAudienceChange(!!checked, 'family')} />
+                        <Checkbox 
+                            id="audience-family" 
+                            checked={audience.includes('family')} 
+                            onCheckedChange={(checked) => handleAudienceChange(!!checked, 'family')} 
+                        />
                         <Label htmlFor="audience-family" className="flex items-center gap-2 text-sm font-normal"><Heart className="h-4 w-4"/> Familia</Label>
                     </div>
                     {/* Placeholder for future groups */}
