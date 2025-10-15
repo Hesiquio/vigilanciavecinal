@@ -20,6 +20,10 @@
           "type": "string",
           "description": "The user's email address.",
           "format": "email"
+        },
+        "postalCode": {
+          "type": "string",
+          "description": "The user's postal code for location-based grouping."
         }
       },
       "required": ["name", "email"]
@@ -95,49 +99,18 @@
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "UserProfile",
-          "schema": {
-            "$ref": "#/backend/entities/UserProfile"
-          },
-          "description": "Stores public user profiles. Writable by the user themselves.",
-          "params": [{
-            "name": "userId",
-            "description": "The unique ID of the user."
-          }]
-        }
-      },
-      {
-        "path": "/sos-alerts/{alertId}",
-        "definition": {
-          "entityName": "SosAlert",
-          "schema": {
-            "$ref": "#/backend/entities/SosAlert"
-          },
-          "description": "Stores all SOS alerts. Writable by any authenticated user, readable by any authenticated user.",
-          "params": [{
-            "name": "alertId",
-            "description": "The unique ID of the alert."
-          }]
-        }
-      },
-      {
-        "path": "/surveillance-zones/{zoneId}",
-        "definition": {
-          "entityName": "SurveillanceZone",
-          "schema": {
-            "$ref": "#/backend/entities/SurveillanceZone"
-          },
-          "description": "Stores the geographical boundaries for each neighborhood watch group.",
-          "params": [{
-            "name": "zoneId",
-            "description": "The unique ID of the zone."
-          }]
-        }
-      }
-    ]
+    "/users/{userId}": {
+      "schema": { "$ref": "#/backend/entities/UserProfile" },
+      "description": "Stores public user profiles. Writable by the user themselves."
+    },
+    "/sos-alerts/{alertId}": {
+      "schema": { "$ref": "#/backend/entities/SosAlert" },
+      "description": "Stores all SOS alerts. Writable by any authenticated user, readable by any authenticated user."
+    },
+    "/surveillance-zones/{zoneId}": {
+      "schema": { "$ref": "#/backend/entities/SurveillanceZone" },
+      "description": "Stores the geographical boundaries for each neighborhood watch group."
+    }
   }
 }
+

@@ -12,20 +12,30 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import GoogleMap from "@/components/dashboard/GoogleMap";
-import { useFirebase } from "@/firebase";
+import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
+import { doc, setDoc } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+import type { UserProfile } from "@/types";
 
-// Example coordinates for a neighborhood polygon
-const neighborhoodPolygon = [
-  { lat: 19.435, lng: -99.135 },
-  { lat: 19.430, lng: -99.135 },
-  { lat: 19.430, lng: -99.130 },
-  { lat: 19.435, lng: -99.130 },
-];
 
 export default function SettingsPage() {
-  const { user, isUserLoading, auth } = useFirebase();
+  const { user, isUserLoading, auth, firestore } = useFirebase();
   const router = useRouter();
+  const { toast } = useToast();
+
+  const userDocRef = useMemoFirebase(
+    () => (user && firestore ? doc(firestore, "users", user.uid) : null),
+    [user, firestore]
+  );
+
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
+
+  const [displayName, setDisplayName] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | undefined>();
   const [mapLoading, setMapLoading] = useState(true);
 
@@ -35,6 +45,15 @@ export default function SettingsPage() {
     }
   }, [user, isUserLoading, router]);
   
+  useEffect(() => {
+    if (userProfile) {
+      setDisplayName(userProfile.name || user?.displayName || "");
+      setPostalCode(userProfile.postalCode || "");
+    } else if (user) {
+      setDisplayName(user.displayName || "");
+    }
+  }, [userProfile, user]);
+
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -46,14 +65,11 @@ export default function SettingsPage() {
           setMapLoading(false);
         },
         () => {
-          // Default to Mexico City on error
           setMapCenter({ lat: 19.4326, lng: -99.1332 });
           setMapLoading(false);
-          console.error("Error getting user location.");
         }
       );
     } else {
-      // Default to Mexico City if geolocation is not supported
       setMapCenter({ lat: 19.4326, lng: -99.1332 });
       setMapLoading(false);
     }
@@ -66,7 +82,29 @@ export default function SettingsPage() {
     }
   };
 
-  if (isUserLoading || !user) {
+  const handleProfileSave = async () => {
+    if (!userDocRef) {
+      toast({ title: "Error", description: "No se puede guardar el perfil.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      await setDoc(userDocRef, {
+        name: displayName,
+        email: user?.email,
+        avatarUrl: user?.photoURL,
+        postalCode: postalCode,
+      }, { merge: true });
+      toast({ title: "Perfil Actualizado", description: "Tu información ha sido guardada." });
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      toast({ title: "Error", description: "No se pudo guardar tu perfil.", variant: "destructive" });
+    }
+  };
+  
+  const isLoading = isUserLoading || isProfileLoading;
+
+  if (isLoading || !user) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
         <p>Cargando perfil...</p>
@@ -79,10 +117,29 @@ export default function SettingsPage() {
        <div className="space-y-6">
         <Card>
           <CardHeader>
+            <CardTitle>Mi Perfil</CardTitle>
+            <CardDescription>
+              Actualiza tu información personal. Tu código postal se usará para agruparte con tus vecinos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nombre</Label>
+              <Input id="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="postalCode">Código Postal</Label>
+              <Input id="postalCode" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="Ej. 06010" />
+            </div>
+            <Button onClick={handleProfileSave}>Guardar Perfil</Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Mi Zona de Vigilancia</CardTitle>
             <CardDescription>
               Esta es el área geográfica que cubre tu grupo de vigilancia.
-              Puedes editarla para ajustarla a tu colonia.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -92,11 +149,11 @@ export default function SettingsPage() {
               </div>
             ) : (
               <div className="relative h-96 w-full rounded-lg overflow-hidden">
-                <GoogleMap center={mapCenter} polygon={neighborhoodPolygon} />
+                <GoogleMap center={mapCenter} />
               </div>
             )}
-            <Button>
-              Editar Zona
+            <Button disabled>
+              Editar Zona (Próximamente)
             </Button>
           </CardContent>
         </Card>
@@ -104,3 +161,4 @@ export default function SettingsPage() {
     </AppShell>
   );
 }
+
