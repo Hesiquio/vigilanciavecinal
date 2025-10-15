@@ -3,7 +3,9 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useFirebase } from "@/firebase";
+import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
+import type { UserProfile } from "@/types";
 import { AppShell } from "@/components/AppShell";
 import {
   Card,
@@ -18,7 +20,7 @@ import { Send } from "lucide-react";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 
 
-const NeighborhoodChatPlaceholder = () => (
+const NeighborhoodChatPlaceholder = ({ title }: { title: string }) => (
     <div className="flex h-full flex-col">
         <div className="flex-1 space-y-4 p-4 overflow-y-auto">
              <div className="flex items-end gap-2">
@@ -50,8 +52,15 @@ const NeighborhoodChatPlaceholder = () => (
 
 
 export default function NeighborhoodPage() {
-  const { user, isUserLoading, auth } = useFirebase();
+  const { user, isUserLoading, auth, firestore } = useFirebase();
   const router = useRouter();
+
+  const userDocRef = useMemoFirebase(
+    () => (user && firestore ? doc(firestore, "users", user.uid) : null),
+    [user, firestore]
+  );
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
+
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -66,7 +75,9 @@ export default function NeighborhoodPage() {
     }
   };
 
-  if (isUserLoading || !user) {
+  const isLoading = isUserLoading || isProfileLoading;
+
+  if (isLoading || !user) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
         <p>Cargando...</p>
@@ -74,15 +85,17 @@ export default function NeighborhoodPage() {
     );
   }
 
+  const chatTitle = `Chat Vecinal: ${userProfile?.postalCode || '...'}`;
+
   return (
     <AppShell user={user} onSignOut={handleSignOut}>
        <div className="grid gap-6 lg:grid-cols-2 h-full">
             <Card className="flex flex-col">
                  <CardHeader>
-                    <CardTitle>Chat Vecinal</CardTitle>
+                    <CardTitle>{chatTitle}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0 flex-1">
-                    <NeighborhoodChatPlaceholder />
+                    <NeighborhoodChatPlaceholder title={chatTitle} />
                 </CardContent>
             </Card>
             <div className="space-y-6">
@@ -92,3 +105,5 @@ export default function NeighborhoodPage() {
     </AppShell>
   );
 }
+
+    

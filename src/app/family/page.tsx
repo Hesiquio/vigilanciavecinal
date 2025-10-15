@@ -142,6 +142,12 @@ export default function FamilyPage() {
     .map(m => (m as any).location) // Need to get location from user profile doc
     .filter(Boolean);
 
+  const getFamilyName = () => {
+    const name = user?.displayName || "";
+    const lastName = name.split(' ').pop();
+    return lastName ? `Familia ${lastName}` : "Chat Familiar";
+  }
+
 
   if (isUserLoading || !user) {
     return (
@@ -159,7 +165,7 @@ export default function FamilyPage() {
             {/* Family Chat */}
             <Card className="flex flex-col h-[400px]">
                 <CardHeader>
-                    <CardTitle>Chat Familiar</CardTitle>
+                    <CardTitle>{getFamilyName()}</CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 p-0">
                     <div className="flex h-full flex-col">
@@ -282,3 +288,5 @@ export default function FamilyPage() {
     </AppShell>
   );
 }
+
+    

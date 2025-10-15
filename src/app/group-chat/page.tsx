@@ -72,17 +72,22 @@ export default function GroupChatPage() {
       </div>
     );
   }
+  
+  // TODO: In a real app, you'd get the group name from the URL or a state manager
+  const groupName = "Nombre del Grupo";
 
   return (
     <AppShell user={user} onSignOut={handleSignOut}>
        <Card className="h-full w-full max-w-4xl mx-auto">
          <CardHeader>
-            <CardTitle>Chat Grupal</CardTitle>
+            <CardTitle>{groupName}</CardTitle>
         </CardHeader>
         <CardContent className="p-0 flex-1">
-            <ChatViewPlaceholder title="Chat Grupal" />
+            <ChatViewPlaceholder title={groupName} />
         </CardContent>
        </Card>
     </AppShell>
   );
 }
+
+    
