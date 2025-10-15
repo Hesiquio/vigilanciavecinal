@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useFirebase } from "@/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Loader, MapPin, CheckCircle } from "lucide-react";
+import type { UserProfile } from "@/types";
 
 export default function WelcomePage() {
   const { user, isUserLoading, firestore } = useFirebase();
@@ -21,12 +22,31 @@ export default function WelcomePage() {
   const [locationString, setLocationString] = useState("Ubicación no obtenida");
   const [isSaving, setIsSaving] = useState(false);
 
+  const userDocRef = useMemoFirebase(
+    () => (user && firestore ? doc(firestore, "users", user.uid) : null),
+    [user, firestore]
+  );
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
+
   useEffect(() => {
     // If user is not logged in, redirect to login page
     if (!isUserLoading && !user) {
       router.push("/login");
     }
   }, [user, isUserLoading, router]);
+
+  // Pre-fill data from user profile
+  useEffect(() => {
+    if (userProfile) {
+      if (userProfile.postalCode) {
+        setPostalCode(userProfile.postalCode);
+      }
+      if (userProfile.location) {
+        setLocationString(userProfile.location);
+        setLocationStatus("success");
+      }
+    }
+  }, [userProfile]);
 
   const handleGetLocation = () => {
     if (navigator.geolocation) {
@@ -75,18 +95,18 @@ export default function WelcomePage() {
       return;
     }
 
-    // TODO: Implement verification logic here.
-    // 1. Use a geocoding API to get postal code from lat/lng.
-    // 2. Compare it with the user-entered postalCode.
-    // 3. If they don't match, show an error toast.
-    console.log("Verificación de ubicación/código postal pendiente de implementación.");
-
-
     if (user && firestore) {
       setIsSaving(true);
       try {
         const userDocRef = doc(firestore, "users", user.uid);
-        await setDoc(userDocRef, { postalCode: postalCode, location: locationString }, { merge: true });
+        await setDoc(userDocRef, { 
+            postalCode: postalCode, 
+            location: locationString,
+            // also ensure name, email, avatar are set from the auth user if not present
+            name: userProfile?.name || user.displayName,
+            email: userProfile?.email || user.email,
+            avatarUrl: userProfile?.avatarUrl || user.photoURL,
+        }, { merge: true });
         toast({
           title: "Perfil Actualizado",
           description: "Tu información ha sido guardada.",
@@ -100,7 +120,9 @@ export default function WelcomePage() {
     }
   };
 
-  if (isUserLoading || !user) {
+  const isLoading = isUserLoading || isProfileLoading;
+
+  if (isLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader className="animate-spin h-8 w-8 text-primary" />
