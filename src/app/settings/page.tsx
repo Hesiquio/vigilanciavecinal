@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import {
   Card,
@@ -11,9 +14,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { currentUser } from "@/lib/data";
+import type { User } from "@/lib/data";
 
 export default function SettingsPage() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    try {
+      const storedUser = localStorage.getItem("currentUser");
+      if (storedUser) {
+        setCurrentUser(JSON.parse(storedUser));
+      }
+    } catch (error) {
+      console.error("Failed to parse user from localStorage", error);
+    }
+  }, []);
+
+  if (!currentUser) {
+    return (
+      <AppShell>
+        <div className="flex justify-center items-center h-full">
+          <p>Cargando perfil...</p>
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <div className="space-y-6">

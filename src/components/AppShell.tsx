@@ -3,22 +3,32 @@
 import type { ReactNode } from "react";
 import React, { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { currentUser, type SosAlert } from "@/lib/data";
+import { users, type SosAlert, type User } from "@/lib/data";
 import { SosModal } from "./SosModal";
 import { Bell, Settings } from "lucide-react";
 import Link from "next/link";
-import DashboardPage from "@/app/page";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { AlertCard } from "@/components/dashboard/AlertCard";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 
 
-function DashboardContent({ alerts = [] }: { alerts: SosAlert[] }) {
+function DashboardContent({ alerts = [], currentUser }: { alerts: SosAlert[], currentUser: User | null }) {
+  if (!currentUser) {
+    return null; // Or a loading state
+  }
   return (
     <div className="space-y-6">
       <div>
@@ -52,16 +62,29 @@ function DashboardContent({ alerts = [] }: { alerts: SosAlert[] }) {
 
 export function AppShell() {
   const [alerts, setAlerts] = useState<SosAlert[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  // Load alerts from localStorage on initial client-side render
+  // Load initial data from localStorage
   useEffect(() => {
     try {
       const storedAlerts = localStorage.getItem("sosAlerts");
       if (storedAlerts) {
         setAlerts(JSON.parse(storedAlerts));
       }
+
+      const storedUser = localStorage.getItem("currentUser");
+      if (storedUser) {
+        setCurrentUser(JSON.parse(storedUser));
+      } else {
+        // If no user is stored, default to the first one
+        setCurrentUser(users[0]);
+        localStorage.setItem("currentUser", JSON.stringify(users[0]));
+      }
+
     } catch (error) {
-      console.error("Failed to parse alerts from localStorage", error);
+      console.error("Failed to parse data from localStorage", error);
+      // Fallback to default if parsing fails
+      if (!currentUser) setCurrentUser(users[0]);
     }
   }, []);
 
@@ -74,8 +97,18 @@ export function AppShell() {
     }
   }, [alerts]);
 
+  const handleSetCurrentUser = (user: User) => {
+    setCurrentUser(user);
+     try {
+      localStorage.setItem("currentUser", JSON.stringify(user));
+    } catch (error) {
+      console.error("Failed to save user to localStorage", error);
+    }
+  };
+
 
   const handleAddAlert = (message: string, location: string) => {
+    if (!currentUser) return;
     const newAlert: SosAlert = {
       id: `sos${Date.now()}`,
       user: currentUser,
@@ -113,15 +146,32 @@ export function AppShell() {
           <Link href="/settings">
             <Settings className="h-6 w-6 text-muted-foreground" />
           </Link>
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-            <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
-          </Avatar>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+               <Avatar className="h-8 w-8 cursor-pointer">
+                {currentUser && <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />}
+                <AvatarFallback>{currentUser?.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Cambiar de Usuario</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {users.map(user => (
+                <DropdownMenuItem key={user.id} onClick={() => handleSetCurrentUser(user)}>
+                  <Avatar className="h-6 w-6 mr-2">
+                    <AvatarImage src={user.avatarUrl} alt={user.name} />
+                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <span>{user.name}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
       
       <main className="flex-1 overflow-y-auto p-4 pb-24 md:p-6">
-        <DashboardContent alerts={alerts} />
+        <DashboardContent alerts={alerts} currentUser={currentUser} />
       </main>
 
       <SosModal onSendSos={handleAddAlert} />

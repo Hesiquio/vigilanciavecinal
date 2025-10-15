@@ -51,5 +51,3 @@ export const familyMembers: FamilyMember[] = [
   { id: 'f2', name: 'Abuela Rosa', avatarUrl: 'https://picsum.photos/seed/6/100/100', status: 'Safe', lastSeen: 'En el mercado local' },
   { id: 'f3', name: 'Sofía (Hija)', avatarUrl: 'https://picsum.photos/seed/7/100/100', status: 'Away', lastSeen: 'Escuela' },
 ];
-
-export const currentUser = users[0];
