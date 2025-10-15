@@ -8,8 +8,49 @@ import { SosModal } from "./SosModal";
 import { Bell, Settings } from "lucide-react";
 import Link from "next/link";
 import DashboardPage from "@/app/page";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { AlertCard } from "@/components/dashboard/AlertCard";
+import { RecentActivity } from "@/components/dashboard/RecentActivity";
 
-export function AppShell({ children }: { children: ReactNode }) {
+
+function DashboardContent({ alerts = [] }: { alerts: SosAlert[] }) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-headline font-bold text-foreground">
+          Hola, {currentUser.name}
+        </h2>
+        <p className="text-muted-foreground">Bienvenido a tu red de seguridad vecinal.</p>
+      </div>
+
+      <Card className="border-destructive/50 bg-destructive/10">
+        <CardHeader>
+          <CardTitle className="text-destructive">Alerta Activa</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {alerts.length > 0 ? (
+            alerts.map((alert) => (
+              <AlertCard key={alert.id} alert={alert} />
+            ))
+          ) : (
+            <p className="text-sm text-center text-destructive/80">No hay alertas activas en este momento.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <RecentActivity />
+      
+    </div>
+  );
+}
+
+
+export function AppShell() {
   const [alerts, setAlerts] = useState<SosAlert[]>([]);
 
   // Load alerts from localStorage on initial client-side render
@@ -46,20 +87,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     setAlerts(prevAlerts => [newAlert, ...prevAlerts]);
   };
   
-  // Clonamos el children y le pasamos los props que necesita
-  const childrenWithProps = React.Children.map(children, child => {
-    // Verificamos si el hijo es un elemento de React válido.
-    // El router de Next.js puede pasar otros tipos de objetos aquí.
-    if (React.isValidElement(child)) {
-      // Comprobamos si es la página del dashboard para inyectarle las props
-      if ((child.type as any).name === 'DashboardPage' || child.type === DashboardPage) {
-        // Clonamos el elemento y le pasamos el array de alertas.
-        return React.cloneElement(child as React.ReactElement<any>, { alerts });
-      }
-    }
-    return child;
-  });
-
 
   return (
     <div className="flex h-screen w-full flex-col bg-background">
@@ -94,7 +121,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
       
       <main className="flex-1 overflow-y-auto p-4 pb-24 md:p-6">
-        {childrenWithProps}
+        <DashboardContent alerts={alerts} />
       </main>
 
       <SosModal onSendSos={handleAddAlert} />
