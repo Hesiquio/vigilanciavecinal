@@ -3,14 +3,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Shield, Users, User } from "lucide-react";
+import { Home, Shield, Users, User, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Principal", icon: Home },
   { href: "/neighborhood", label: "Vecinal", icon: Shield },
-  { href: "/family", label: "Familia", icon: Users },
-  { href: "/settings", label: "Perfil", icon: User },
+  { href: "/groups", label: "Grupos", icon: Users },
+  { href: "/family", label: "Familia", icon: Heart },
 ];
 
 export function BottomNavBar() {
