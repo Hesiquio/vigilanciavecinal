@@ -36,16 +36,7 @@ export const users: User[] = [
   { id: 'u4', name: 'Javier', avatarUrl: 'https://picsum.photos/seed/4/100/100' },
 ];
 
-export const sosAlerts: SosAlert[] = [
-  {
-    id: 'sos1',
-    user: users[1],
-    timestamp: 'Hace 5 minutos',
-    location: 'Cerca del parque central',
-    message: 'Actividad sospechosa, un coche sin placas merodeando la zona. Necesito apoyo.',
-    type: 'text',
-  },
-];
+export const sosAlerts: SosAlert[] = [];
 
 export const chatMessages: ChatMessage[] = [
   { id: 'm1', user: users[0], timestamp: '10:30 AM', text: 'Buenos días a todos, ¿todo tranquilo por la colonia?' },

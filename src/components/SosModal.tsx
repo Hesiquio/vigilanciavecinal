@@ -15,7 +15,11 @@ import { Siren, Mic, Video, MapPin, Send, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
 
-export function SosModal() {
+type SosModalProps = {
+    onSendSos: (message: string, location: string) => void;
+}
+
+export function SosModal({ onSendSos }: SosModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [location, setLocation] = useState("Ubicación no disponible");
@@ -57,7 +61,8 @@ export function SosModal() {
         return;
     }
     
-    console.log("SOS Enviado:", { message, location });
+    onSendSos(message, location);
+    
     toast({
         title: "¡Alerta de Auxilio Enviada!",
         description: "Tu grupo ha sido notificado y tu ubicación compartida.",

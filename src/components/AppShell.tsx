@@ -1,13 +1,39 @@
 "use client";
 
 import type { ReactNode } from "react";
+import React, { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { currentUser } from "@/lib/data";
+import { currentUser, type SosAlert, users } from "@/lib/data";
 import { SosModal } from "./SosModal";
 import { Bell, Settings } from "lucide-react";
 import Link from "next/link";
+import DashboardPage from "@/app/page";
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const [alerts, setAlerts] = useState<SosAlert[]>([]);
+
+  const handleAddAlert = (message: string, location: string) => {
+    const newAlert: SosAlert = {
+      id: `sos${Date.now()}`,
+      user: currentUser, // Usamos el usuario actual para la nueva alerta
+      timestamp: "Hace un momento",
+      location: location,
+      message: message,
+      type: 'text',
+    };
+    setAlerts([newAlert, ...alerts]);
+  };
+  
+  // Clonamos el children y le pasamos los props que necesita
+  const childrenWithProps = React.Children.map(children, child => {
+    if (React.isValidElement(child) && child.type === DashboardPage) {
+      // @ts-ignore
+      return React.cloneElement(child, { alerts });
+    }
+    return child;
+  });
+
+
   return (
     <div className="flex h-screen w-full flex-col bg-background">
       <header className="flex h-16 items-center justify-between border-b bg-card px-4 shadow-sm md:px-6">
@@ -41,10 +67,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
       
       <main className="flex-1 overflow-y-auto p-4 pb-24 md:p-6">
-        {children}
+        {childrenWithProps}
       </main>
 
-      <SosModal />
+      <SosModal onSendSos={handleAddAlert} />
     </div>
   );
 }
