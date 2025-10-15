@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { currentUser, type SosAlert } from "@/lib/data";
 import { SosModal } from "./SosModal";
@@ -12,16 +12,38 @@ import DashboardPage from "@/app/page";
 export function AppShell({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<SosAlert[]>([]);
 
+  // Load alerts from localStorage on initial client-side render
+  useEffect(() => {
+    try {
+      const storedAlerts = localStorage.getItem("sosAlerts");
+      if (storedAlerts) {
+        setAlerts(JSON.parse(storedAlerts));
+      }
+    } catch (error) {
+      console.error("Failed to parse alerts from localStorage", error);
+    }
+  }, []);
+
+  // Save alerts to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem("sosAlerts", JSON.stringify(alerts));
+    } catch (error) {
+      console.error("Failed to save alerts to localStorage", error);
+    }
+  }, [alerts]);
+
+
   const handleAddAlert = (message: string, location: string) => {
     const newAlert: SosAlert = {
       id: `sos${Date.now()}`,
       user: currentUser,
-      timestamp: "Hace un momento",
+      timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
       location: location,
       message: message,
       type: 'text',
     };
-    setAlerts([newAlert, ...alerts]);
+    setAlerts(prevAlerts => [newAlert, ...prevAlerts]);
   };
   
   // Clonamos el children y le pasamos los props que necesita
