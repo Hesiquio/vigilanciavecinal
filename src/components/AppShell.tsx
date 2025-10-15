@@ -52,7 +52,7 @@ export function AppShell({ user, onSignOut, children }: { user: User, onSignOut:
     <div className="flex h-screen w-full flex-col bg-background">
       <header className="flex h-16 shrink-0 items-center justify-between border-b bg-card px-4 shadow-sm md:px-6">
         <div className="flex items-center gap-4">
-           <Link href="/" className="flex items-center gap-2 mr-6">
+           <Link href="/" className="flex items-center gap-2">
              <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="24"
@@ -67,11 +67,11 @@ export function AppShell({ user, onSignOut, children }: { user: User, onSignOut:
               >
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
-              <h1 className="font-headline hidden text-lg font-bold text-foreground truncate sm:block">Vigilancia Vecinal</h1>
+              <h1 className="font-headline text-lg font-bold text-foreground truncate"><span className="hidden sm:inline">Vigilancia Vecinal</span></h1>
            </Link>
         </div>
 
-        <nav className="hidden items-center gap-2 md:flex">
+        <nav className="hidden items-center gap-2 md:flex ml-6">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
