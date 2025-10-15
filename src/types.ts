@@ -4,4 +4,5 @@ export type UserProfile = {
   email: string;
   avatarUrl: string;
   postalCode?: string;
+  location?: string;
 };

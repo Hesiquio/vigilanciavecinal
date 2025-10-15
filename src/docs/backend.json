@@ -1,0 +1,119 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User Profile",
+      "description": "Represents a user's public profile information.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "URL for the user's avatar image.",
+          "format": "uri"
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "postalCode": {
+          "type": "string",
+          "description": "The user's postal code for location-based grouping."
+        },
+        "location": {
+            "type": "string",
+            "description": "The user's last known location as a string 'Lat: XX.XXXX, Lon: YY.YYYY'."
+        }
+      },
+      "required": ["name", "email"]
+    },
+    "SosAlert": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SOS Alert",
+      "description": "Represents an SOS alert sent by a user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who sent the alert."
+        },
+        "userName": {
+          "type": "string",
+          "description": "The name of the user who sent the alert."
+        },
+        "userAvatarUrl": {
+          "type": "string",
+          "description": "The avatar URL of the user who sent the alert."
+        },
+        "message": {
+          "type": "string",
+          "description": "Text message accompanying the SOS alert."
+        },
+        "location": {
+          "type": "string",
+          "description": "Location from where the alert was sent."
+        },
+        "category": {
+            "type": "string",
+            "description": "The category of the SOS alert.",
+            "enum": ["Robo", "Accidentes", "Desastres Naturales", "Personas Sospechosas"]
+        },
+        "timestamp": {
+          "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp"
+        }
+      },
+      "required": ["userId", "userName", "message", "location", "category", "timestamp"]
+    },
+    "SurveillanceZone": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Surveillance Zone",
+      "description": "Represents a geographical area for neighborhood watch.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the surveillance zone (e.g., 'Colonia Centro')."
+        },
+        "polygon": {
+          "type": "array",
+          "description": "An array of coordinates defining the zone's boundary.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "lat": { "type": "number" },
+              "lng": { "type": "number" }
+            },
+            "required": ["lat", "lng"]
+          }
+        }
+      },
+      "required": ["name", "polygon"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous",
+      "google.com"
+    ]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/backend/entities/UserProfile" },
+      "description": "Stores public user profiles. Writable by the user themselves."
+    },
+    "/sos-alerts/{alertId}": {
+      "schema": { "$ref": "#/backend/entities/SosAlert" },
+      "description": "Stores all SOS alerts. Writable by any authenticated user, readable by any authenticated user."
+    },
+    "/surveillance-zones/{zoneId}": {
+      "schema": { "$ref": "#/backend/entities/SurveillanceZone" },
+      "description": "Stores the geographical boundaries for each neighborhood watch group."
+    }
+  }
+}

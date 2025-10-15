@@ -86,15 +86,15 @@ export default function WelcomePage() {
       setIsSaving(true);
       try {
         const userDocRef = doc(firestore, "users", user.uid);
-        await setDoc(userDocRef, { postalCode: postalCode }, { merge: true });
+        await setDoc(userDocRef, { postalCode: postalCode, location: locationString }, { merge: true });
         toast({
           title: "Perfil Actualizado",
-          description: "Tu código postal ha sido guardado.",
+          description: "Tu información ha sido guardada.",
         });
         router.push("/"); // Redirect to dashboard
       } catch (error) {
-        console.error("Error saving postal code:", error);
-        toast({ title: "Error", description: "No se pudo guardar tu código postal.", variant: "destructive" });
+        console.error("Error saving profile:", error);
+        toast({ title: "Error", description: "No se pudo guardar tu información.", variant: "destructive" });
         setIsSaving(false);
       }
     }
