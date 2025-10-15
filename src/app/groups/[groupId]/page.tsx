@@ -3,19 +3,35 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from "@/firebase";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy } from "firebase/firestore";
+import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy, updateDoc } from "firebase/firestore";
 import { doc } from "firebase/firestore";
 import type { GroupMember, UserProfile, ChatMessage, Group } from "@/types";
 import { Loader, UserPlus, Check, Send, AlertCircle, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
+import GoogleMap from "@/components/dashboard/GoogleMap";
+
+const parseLocation = (locationStr: string): { lat: number; lng: number } | null => {
+    if (!locationStr) return null;
+    const match = locationStr.match(/Lat: ([-]?\d+\.\d+), Lon: ([-]?\d+\.\d+)/);
+    if (match && match.length === 3) {
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            return { lat, lng };
+        }
+    }
+    return null;
+}
 
 async function findUserByEmail(db: any, email: string): Promise<(UserProfile & {id: string}) | null> {
   const usersRef = collection(db, "users");
@@ -38,12 +54,14 @@ async function sendGroupRequest(db: any, currentUser: any, targetUser: UserProfi
         email: targetUser.email,
         avatarUrl: targetUser.avatarUrl,
         status: 'pending',
+        isSharingLocation: false, // Default to not sharing
+        location: targetUser.location || '',
     });
     // Add requested group to the target user's group list
     const targetUserGroupRef = doc(db, "users", targetUser.id, "groups", groupId);
     batch.set(targetUserGroupRef, {
         name: groupName,
-        status: 'pending' // custom status to indicate an invitation
+        status: 'pending'
     });
     await batch.commit();
 }
@@ -53,9 +71,6 @@ async function acceptGroupRequest(db: any, currentUser: any, memberId: string, g
     const batch = writeBatch(db);
     const groupMemberRef = doc(db, "groups", groupId, "members", memberId);
     batch.update(groupMemberRef, { status: 'accepted' });
-
-    // This part is tricky because the owner isn't a "member" in their own list in the same way
-    // For now, let's just accept on the group level. A full implementation might need more complex logic.
     await batch.commit();
 }
 
@@ -144,6 +159,8 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
     [firestore, groupId]
   );
   const { data: members, isLoading: isLoadingMembers } = useCollection<GroupMember>(membersQuery);
+  
+  const currentUserMemberInfo = members?.find(m => m.userId === user?.uid);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -169,7 +186,6 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
         toast({ title: "Acción no permitida", description: "Ya eres miembro de este grupo.", variant: "destructive" });
       }
       else {
-        // A simple request sending without checking for existing membership for now
         await sendGroupRequest(firestore, user, targetUser, groupId, groupData.name);
         toast({ title: "Solicitud Enviada", description: `Se ha enviado una solicitud a ${targetUser.name} para unirse al grupo.` });
         setSearchEmail("");
@@ -181,8 +197,6 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
     setIsSearching(false);
   };
   
-  // Accept request logic needs context of who is accepting. This is simplified.
-  // A real implementation would check if the current user has rights to accept.
   const handleAcceptRequest = async (memberId: string) => {
     if (!firestore || !user) return;
     try {
@@ -193,6 +207,23 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
         toast({ title: "Error", description: "No se pudo aceptar la solicitud.", variant: "destructive" });
     }
   };
+  
+  const handleLocationSharingChange = async (isSharing: boolean) => {
+      if (!firestore || !user) return;
+      const memberRef = doc(firestore, "groups", groupId, "members", user.uid);
+      try {
+          await updateDoc(memberRef, { isSharingLocation: isSharing });
+          toast({ title: "Preferencia guardada", description: `Compartir ubicación ${isSharing ? 'activado' : 'desactivado'}.` });
+      } catch (error) {
+          console.error("Error updating location sharing preference:", error);
+          toast({ title: "Error", description: "No se pudo guardar tu preferencia.", variant: "destructive" });
+      }
+  }
+
+  const memberLocations = members
+    ?.filter(m => m.isSharingLocation && m.location)
+    .map(m => parseLocation(m.location!))
+    .filter(Boolean) as { lat: number; lng: number }[];
 
 
   if (isUserLoading || isLoadingGroupData || !user || !firestore) {
@@ -225,6 +256,26 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
         </div>
 
         <div className="space-y-6">
+             <Card>
+                <CardHeader className="pb-4">
+                    <CardTitle>Mapa del Grupo</CardTitle>
+                    <CardDescription>Ubicación de miembros que comparten su posición.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="relative h-64 w-full rounded-lg overflow-hidden mb-4">
+                        <GoogleMap markers={memberLocations} />
+                    </div>
+                     <div className="flex items-center space-x-2">
+                        <Switch 
+                            id="location-sharing"
+                            checked={currentUserMemberInfo?.isSharingLocation || false}
+                            onCheckedChange={handleLocationSharingChange}
+                            disabled={isLoadingMembers}
+                         />
+                        <Label htmlFor="location-sharing">Compartir mi ubicación con este grupo</Label>
+                    </div>
+                </CardContent>
+            </Card>
              <Card>
                 <CardHeader>
                     <CardTitle>Añadir Miembro</CardTitle>

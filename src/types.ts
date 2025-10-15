@@ -29,6 +29,8 @@ export type GroupMember = {
     email: string;
     avatarUrl: string;
     status: 'pending' | 'accepted' | 'requested';
+    isSharingLocation?: boolean;
+    location?: string;
 }
 
 export type UserGroup = {

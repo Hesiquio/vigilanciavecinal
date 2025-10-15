@@ -141,6 +141,14 @@
                 "type": "string",
                 "enum": ["pending", "accepted", "requested"],
                 "description": "The status of the group membership."
+            },
+            "isSharingLocation": {
+                "type": "boolean",
+                "description": "Whether the member is currently sharing their location with the group."
+            },
+             "location": {
+                "type": "string",
+                "description": "The user's last known location as a string 'Lat: XX.XXXX, Lon: YY.YYYY'."
             }
         },
         "required": ["userId", "name", "email", "status"]
@@ -217,7 +225,7 @@
       "schema": { "$ref": "#/backend/entities/GroupMember" },
       "description": "Stores the members of a specific user-created group."
     },
-    "/group-chats/{groupId}/messages/{messageId}": {
+    "group-chats/{groupId}/messages/{messageId}": {
         "schema": { "$ref": "#/backend/entities/ChatMessage" },
         "description": "Messages within a specific manually-created group chat."
     }

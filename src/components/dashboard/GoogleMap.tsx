@@ -1,3 +1,4 @@
+
 "use client";
 
 import { APIProvider, Map, useMap, AdvancedMarker } from "@vis.gl/react-google-maps";
@@ -6,6 +7,7 @@ import { useEffect } from "react";
 type GoogleMapProps = {
   center?: { lat: number; lng: number };
   markerPosition?: { lat: number; lng: number };
+  markers?: { lat: number; lng: number }[];
   polygon?: { lat: number; lng: number }[];
 };
 
@@ -35,9 +37,9 @@ const MapWithPolygon = ({ polygon }: { polygon?: { lat: number, lng: number }[]}
 }
 
 
-export default function GoogleMap({ center, markerPosition, polygon }: GoogleMapProps) {
-  // Center map on polygon or marker, otherwise default to Mexico City
-  const mapCenter = center || polygon?.[0] || markerPosition || { lat: 19.4326, lng: -99.1332 };
+export default function GoogleMap({ center, markerPosition, markers, polygon }: GoogleMapProps) {
+  // Center map on polygon or markers, otherwise default to Mexico City
+  const mapCenter = center || polygon?.[0] || markers?.[0] || markerPosition || { lat: 19.4326, lng: -99.1332 };
 
   return (
     <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!} >
@@ -49,6 +51,7 @@ export default function GoogleMap({ center, markerPosition, polygon }: GoogleMap
         mapId="b1b2f2c2a3e4f5a6"
       >
         {markerPosition && <AdvancedMarker position={markerPosition} />}
+        {markers && markers.map((pos, i) => <AdvancedMarker key={i} position={pos} />)}
         {polygon && <MapWithPolygon polygon={polygon} />}
       </Map>
     </APIProvider>

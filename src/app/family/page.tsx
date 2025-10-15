@@ -17,6 +17,19 @@ import { Loader, UserPlus, Check, Send, AlertCircle } from "lucide-react";
 import GoogleMap from "@/components/dashboard/GoogleMap";
 import { cn } from "@/lib/utils";
 
+const parseLocation = (locationStr: string): { lat: number; lng: number } | null => {
+    if (!locationStr) return null;
+    const match = locationStr.match(/Lat: ([-]?\d+\.\d+), Lon: ([-]?\d+\.\d+)/);
+    if (match && match.length === 3) {
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            return { lat, lng };
+        }
+    }
+    return null;
+}
+
 async function findUserByEmail(db: any, email: string): Promise<(UserProfile & {id: string}) | null> {
   const usersRef = collection(db, "users");
   const q = query(usersRef, where("email", "==", email));
@@ -143,6 +156,13 @@ export default function FamilyPage() {
   );
   const { data: familyMembers, isLoading: isLoadingFamily } = useCollection<FamilyMember>(familyQuery);
 
+  const userProfileQuery = useMemoFirebase(
+    () => (firestore && user ? collection(firestore, 'users') : null),
+    [firestore, user]
+  );
+  const { data: userProfiles } = useCollection<UserProfile>(userProfileQuery);
+
+
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push("/login");
@@ -190,9 +210,13 @@ export default function FamilyPage() {
   };
 
   const acceptedFamilyMembers = familyMembers?.filter(m => m.status === 'accepted') || [];
-  const familyLocations = acceptedFamilyMembers
-    .map(m => (m as any).location) 
-    .filter(Boolean);
+  const acceptedMemberIds = acceptedFamilyMembers.map(m => m.userId);
+  
+  const familyLocations = userProfiles
+    ?.filter(p => acceptedMemberIds.includes(p.id) && p.location)
+    .map(p => parseLocation(p.location!))
+    .filter(Boolean) as { lat: number; lng: number }[];
+
 
   if (isUserLoading || !user || !firestore) {
     return (
@@ -227,7 +251,7 @@ export default function FamilyPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="relative h-64 w-full rounded-lg overflow-hidden">
-                        <GoogleMap />
+                        <GoogleMap markers={familyLocations} />
                     </div>
                 </CardContent>
             </Card>
