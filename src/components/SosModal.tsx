@@ -15,14 +15,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Siren, Mic, Video, MapPin, Send, MessageCircle, ShieldAlert, Users, Heart, Loader } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
-import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
+import { useFirebase, useDoc, useMemoFirebase, useCollection } from "@/firebase";
 import { collection, serverTimestamp, addDoc } from "firebase/firestore";
 import { doc } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
-import type { UserProfile } from "@/types";
+import type { UserProfile, UserGroup } from "@/types";
 
 type SosModalProps = {
     user: User;
@@ -35,7 +35,7 @@ const alertCategories = [
     "Personas Sospechosas",
 ]
 
-const ALL_AUDIENCES = ["neighbors", "family"];
+const BASE_AUDIENCES = ["neighbors", "family"];
 
 export function SosModal({ user }: SosModalProps) {
   const { firestore } = useFirebase();
@@ -52,6 +52,13 @@ export function SosModal({ user }: SosModalProps) {
     [user, firestore]
   );
   const { data: userProfile } = useDoc<UserProfile>(userDocRef);
+
+  const userGroupsQuery = useMemoFirebase(
+    () => (user && firestore ? collection(firestore, `users/${user.uid}/groups`) : null),
+    [user, firestore]
+  );
+  const { data: userGroups, isLoading: isLoadingGroups } = useCollection<UserGroup>(userGroupsQuery);
+
 
   useEffect(() => {
     if (isOpen) {
@@ -84,7 +91,8 @@ export function SosModal({ user }: SosModalProps) {
   }
   
   const handleSelectAll = () => {
-    setAudience(ALL_AUDIENCES);
+    const allGroupIds = userGroups?.map(g => g.id) || [];
+    setAudience([...BASE_AUDIENCES, ...allGroupIds]);
   }
 
   const postMessageToChats = async (alertId: string, alertMessage: string, alertCategory: string) => {
@@ -98,19 +106,25 @@ export function SosModal({ user }: SosModalProps) {
           timestamp: serverTimestamp(),
           alertId: alertId,
       };
+      
+      const postPromises: Promise<any>[] = [];
 
-      // Post to family chat if selected
-      if (audience.includes('family') && userProfile) {
-          const familyId = user.uid; // Use user's UID as family ID for simplicity
-          const familyChatRef = collection(firestore, `family-chats/${familyId}/messages`);
-          await addDoc(familyChatRef, chatMessage);
+      for (const aud of audience) {
+        if (aud === 'family' && userProfile) {
+             const familyId = user.uid;
+             const familyChatRef = collection(firestore, `family-chats/${familyId}/messages`);
+             postPromises.push(addDoc(familyChatRef, chatMessage));
+        } else if (aud === 'neighbors' && userProfile?.postalCode) {
+            const neighborhoodChatRef = collection(firestore, `neighborhood-chats/${userProfile.postalCode}/messages`);
+            postPromises.push(addDoc(neighborhoodChatRef, chatMessage));
+        } else {
+            // It's a group ID
+            const groupChatRef = collection(firestore, `group-chats/${aud}/messages`);
+            postPromises.push(addDoc(groupChatRef, chatMessage));
+        }
       }
 
-      // Post to neighborhood chat if selected
-      if (audience.includes('neighbors') && userProfile?.postalCode) {
-          const neighborhoodChatRef = collection(firestore, `neighborhood-chats/${userProfile.postalCode}/messages`);
-          await addDoc(neighborhoodChatRef, chatMessage);
-      }
+      await Promise.all(postPromises);
   }
 
   const handleSendSos = async () => {
@@ -215,23 +229,36 @@ export function SosModal({ user }: SosModalProps) {
                  <Label className="text-sm font-medium">Notificar a:</Label>
                  <Button variant="link" size="sm" className="p-0 h-auto" onClick={handleSelectAll}>Enviar a todos</Button>
               </div>
-               <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center gap-2 rounded-md border p-3">
-                        <Checkbox 
-                            id="audience-neighbors" 
-                            checked={audience.includes('neighbors')} 
-                            onCheckedChange={(checked) => handleAudienceChange(!!checked, 'neighbors')} 
-                        />
-                        <Label htmlFor="audience-neighbors" className="flex items-center gap-2 text-sm font-normal"><ShieldAlert className="h-4 w-4"/> Vecinos</Label>
+               <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="flex items-center gap-2 rounded-md border p-3">
+                            <Checkbox 
+                                id="audience-neighbors" 
+                                checked={audience.includes('neighbors')} 
+                                onCheckedChange={(checked) => handleAudienceChange(!!checked, 'neighbors')} 
+                            />
+                            <Label htmlFor="audience-neighbors" className="flex items-center gap-2 text-sm font-normal"><ShieldAlert className="h-4 w-4"/> Vecinos</Label>
+                        </div>
+                         <div className="flex items-center gap-2 rounded-md border p-3">
+                            <Checkbox 
+                                id="audience-family" 
+                                checked={audience.includes('family')} 
+                                onCheckedChange={(checked) => handleAudienceChange(!!checked, 'family')} 
+                            />
+                            <Label htmlFor="audience-family" className="flex items-center gap-2 text-sm font-normal"><Heart className="h-4 w-4"/> Familia</Label>
+                        </div>
                     </div>
-                     <div className="flex items-center gap-2 rounded-md border p-3">
-                        <Checkbox 
-                            id="audience-family" 
-                            checked={audience.includes('family')} 
-                            onCheckedChange={(checked) => handleAudienceChange(!!checked, 'family')} 
-                        />
-                        <Label htmlFor="audience-family" className="flex items-center gap-2 text-sm font-normal"><Heart className="h-4 w-4"/> Familia</Label>
-                    </div>
+                    {isLoadingGroups && <p className="text-xs text-muted-foreground">Cargando grupos...</p>}
+                    {userGroups && userGroups.map(group => (
+                         <div key={group.id} className="flex items-center gap-2 rounded-md border p-3">
+                            <Checkbox 
+                                id={`audience-${group.id}`}
+                                checked={audience.includes(group.id)} 
+                                onCheckedChange={(checked) => handleAudienceChange(!!checked, group.id)} 
+                            />
+                            <Label htmlFor={`audience-${group.id}`} className="flex items-center gap-2 text-sm font-normal"><Users className="h-4 w-4"/> {group.name}</Label>
+                        </div>
+                    ))}
                </div>
             </div>
             <div className="relative">
@@ -273,3 +300,5 @@ export function SosModal({ user }: SosModalProps) {
     </>
   );
 }
+
+    
