@@ -4,6 +4,7 @@ import { APIProvider, Map, useMap, AdvancedMarker } from "@vis.gl/react-google-m
 import { useEffect } from "react";
 
 type GoogleMapProps = {
+  center?: { lat: number; lng: number };
   markerPosition?: { lat: number; lng: number };
   polygon?: { lat: number; lng: number }[];
 };
@@ -34,14 +35,14 @@ const MapWithPolygon = ({ polygon }: { polygon?: { lat: number, lng: number }[]}
 }
 
 
-export default function GoogleMap({ markerPosition, polygon }: GoogleMapProps) {
+export default function GoogleMap({ center, markerPosition, polygon }: GoogleMapProps) {
   // Center map on polygon or marker, otherwise default to Mexico City
-  const center = polygon?.[0] || markerPosition || { lat: 19.4326, lng: -99.1332 };
+  const mapCenter = center || polygon?.[0] || markerPosition || { lat: 19.4326, lng: -99.1332 };
 
   return (
     <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!} >
       <Map
-        defaultCenter={center}
+        center={mapCenter}
         defaultZoom={15}
         gestureHandling={"greedy"}
         disableDefaultUI={true}

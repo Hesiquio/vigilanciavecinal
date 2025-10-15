@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import {
@@ -29,12 +29,38 @@ const neighborhoodPolygon = [
 export default function SettingsPage() {
   const { user, isUserLoading, auth } = useFirebase();
   const router = useRouter();
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | undefined>();
+  const [mapLoading, setMapLoading] = useState(true);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push("/login");
     }
   }, [user, isUserLoading, router]);
+  
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setMapCenter({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+          setMapLoading(false);
+        },
+        () => {
+          // Default to Mexico City on error
+          setMapCenter({ lat: 19.4326, lng: -99.1332 });
+          setMapLoading(false);
+          console.error("Error getting user location.");
+        }
+      );
+    } else {
+      // Default to Mexico City if geolocation is not supported
+      setMapCenter({ lat: 19.4326, lng: -99.1332 });
+      setMapLoading(false);
+    }
+  }, []);
 
   const handleSignOut = async () => {
     if (auth) {
@@ -62,14 +88,20 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle>Mi Zona de Vigilancia</CardTitle>
               <CardDescription>
-                Esta es el área geográfica que tu grupo de vigilancia cubre.
+                Esta es el área geográfica que tu grupo de vigilancia cubre. Próximamente podrás dibujarla aquí.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="relative h-64 w-full rounded-lg overflow-hidden">
-                 <GoogleMap polygon={neighborhoodPolygon} />
+                 {mapLoading ? (
+                   <div className="flex h-full w-full items-center justify-center bg-secondary">
+                     <p className="text-muted-foreground">Obteniendo tu ubicación...</p>
+                   </div>
+                 ) : (
+                    <GoogleMap center={mapCenter} polygon={neighborhoodPolygon} />
+                 )}
               </div>
-               <Button variant="outline" className="mt-4 w-full">Editar Zona</Button>
+               <Button variant="outline" className="mt-4 w-full" disabled>Editar Zona</Button>
             </CardContent>
           </Card>
 
