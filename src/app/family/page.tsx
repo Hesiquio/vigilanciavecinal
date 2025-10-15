@@ -1,29 +1,22 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { AppShell } from "@/components/AppShell";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { collection, query, where, getDocs, writeBatch } from "firebase/firestore";
+import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy } from "firebase/firestore";
 import { doc } from "firebase/firestore";
-import type { FamilyMember, UserProfile } from "@/types";
-import { Loader, UserPlus, Check, X, Send, AlertCircle } from "lucide-react";
+import type { FamilyMember, UserProfile, ChatMessage } from "@/types";
+import { Loader, UserPlus, Check, Send, AlertCircle } from "lucide-react";
 import GoogleMap from "@/components/dashboard/GoogleMap";
+import { cn } from "@/lib/utils";
 
-// Helper functions (could be moved to a separate file)
 async function findUserByEmail(db: any, email: string): Promise<(UserProfile & {id: string}) | null> {
   const usersRef = collection(db, "users");
   const q = query(usersRef, where("email", "==", email));
@@ -37,8 +30,6 @@ async function findUserByEmail(db: any, email: string): Promise<(UserProfile & {
 
 async function sendFamilyRequest(db: any, currentUser: any, targetUser: UserProfile & {id: string}) {
     const batch = writeBatch(db);
-
-    // Add to your own family list with "requested" status
     const currentUserFamilyRef = doc(db, "users", currentUser.uid, "familyMembers", targetUser.id);
     batch.set(currentUserFamilyRef, {
         userId: targetUser.id,
@@ -47,8 +38,6 @@ async function sendFamilyRequest(db: any, currentUser: any, targetUser: UserProf
         avatarUrl: targetUser.avatarUrl,
         status: 'requested',
     });
-
-    // Add to their family list with "pending" status
     const targetUserFamilyRef = doc(db, "users", targetUser.id, "familyMembers", currentUser.uid);
     batch.set(targetUserFamilyRef, {
         userId: currentUser.uid,
@@ -57,23 +46,87 @@ async function sendFamilyRequest(db: any, currentUser: any, targetUser: UserProf
         avatarUrl: currentUser.photoURL,
         status: 'pending',
     });
-
     await batch.commit();
 }
 
 async function acceptFamilyRequest(db: any, currentUser: any, memberId: string) {
     const batch = writeBatch(db);
-    
-    // Update your status to "accepted"
     const yourFamilyMemberRef = doc(db, "users", currentUser.uid, "familyMembers", memberId);
     batch.update(yourFamilyMemberRef, { status: 'accepted' });
-
-    // Update their status to "accepted"
     const theirFamilyMemberRef = doc(db, "users", memberId, "familyMembers", currentUser.uid);
     batch.update(theirFamilyMemberRef, { status: 'accepted' });
-
     await batch.commit();
 }
+
+const FamilyChat = ({ user, firestore }: { user: any, firestore: any }) => {
+    const familyId = user.uid; // Use the user's own UID as the ID for their family chat
+    const messagesRef = useMemoFirebase(
+        () => firestore ? query(collection(firestore, `family-chats/${familyId}/messages`), orderBy("timestamp", "asc")) : null,
+        [firestore, familyId]
+    );
+    const { data: messages, isLoading } = useCollection<ChatMessage>(messagesRef);
+    const [newMessage, setNewMessage] = useState("");
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
+
+    const handleSendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newMessage.trim() || !firestore) return;
+        const messageData = {
+            text: newMessage,
+            userId: user.uid,
+            userName: user.displayName || "Unknown User",
+            userAvatarUrl: user.photoURL || "",
+            timestamp: serverTimestamp(),
+        };
+        await addDoc(collection(firestore, `family-chats/${familyId}/messages`), messageData);
+        setNewMessage("");
+    };
+
+    const getFamilyName = () => {
+        const name = user?.displayName || "";
+        const lastName = name.split(' ').pop();
+        return lastName ? `Familia ${lastName}` : "Chat Familiar";
+    }
+    
+    return (
+        <Card className="flex flex-col h-[400px]">
+            <CardHeader>
+                <CardTitle>{getFamilyName()}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 p-0">
+                <div className="flex h-full flex-col">
+                    <div className="flex-1 space-y-4 p-4 overflow-y-auto">
+                        {isLoading && <p className="text-center">Cargando mensajes...</p>}
+                        {!isLoading && messages && messages.map((msg) => (
+                            <div key={msg.id} className={cn("flex items-end gap-2", msg.userId === user.uid ? "justify-end" : "justify-start")}>
+                                {msg.userId !== 'system' && msg.userId !== user.uid && <Avatar className="h-8 w-8"><AvatarImage src={msg.userAvatarUrl} /><AvatarFallback>{msg.userName?.charAt(0)}</AvatarFallback></Avatar>}
+                                {msg.userId === 'system' ? (
+                                    <div className="w-full text-center text-xs text-muted-foreground italic my-2">
+                                        <p>{msg.text.split('\n').map((line, i) => <span key={i}>{line}<br/></span>)}</p>
+                                    </div>
+                                ) : (
+                                    <div className={cn("max-w-xs rounded-lg p-3", msg.userId === user.uid ? "bg-primary text-primary-foreground" : "bg-secondary")}>
+                                        <p className="text-sm">{msg.text}</p>
+                                    </div>
+                                )}
+                                {msg.userId !== 'system' && msg.userId === user.uid && <Avatar className="h-8 w-8"><AvatarImage src={user.photoURL || undefined} /><AvatarFallback>TÚ</AvatarFallback></Avatar>}
+                            </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                    </div>
+                    <form onSubmit={handleSendMessage} className="flex items-center gap-2 border-t p-4">
+                        <Input placeholder="Escribe un mensaje..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} />
+                        <Button type="submit"><Send /></Button>
+                    </form>
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
 
 
 export default function FamilyPage() {
@@ -84,7 +137,6 @@ export default function FamilyPage() {
   const [searchEmail, setSearchEmail] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
-  // Firestore query for family members
   const familyQuery = useMemoFirebase(
     () => (firestore && user ? collection(firestore, `users/${user.uid}/familyMembers`) : null),
     [firestore, user]
@@ -116,7 +168,7 @@ export default function FamilyPage() {
       }
       else {
         await sendFamilyRequest(firestore, user, targetUser);
-        toast({ title: "Solicitud Enviada", description: `Se ha enviado una solicitud de amistad a ${targetUser.name}.` });
+        toast({ title: "Solicitud Enviada", description: `Se ha enviado una solicitud a ${targetUser.name}.` });
         setSearchEmail("");
       }
     } catch (error) {
@@ -139,17 +191,10 @@ export default function FamilyPage() {
 
   const acceptedFamilyMembers = familyMembers?.filter(m => m.status === 'accepted') || [];
   const familyLocations = acceptedFamilyMembers
-    .map(m => (m as any).location) // Need to get location from user profile doc
+    .map(m => (m as any).location) 
     .filter(Boolean);
 
-  const getFamilyName = () => {
-    const name = user?.displayName || "";
-    const lastName = name.split(' ').pop();
-    return lastName ? `Familia ${lastName}` : "Chat Familiar";
-  }
-
-
-  if (isUserLoading || !user) {
+  if (isUserLoading || !user || !firestore) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
         <p>Cargando...</p>
@@ -160,46 +205,9 @@ export default function FamilyPage() {
   return (
     <AppShell user={user} onSignOut={handleSignOut}>
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Left Column */}
         <div className="space-y-6">
-            {/* Family Chat */}
-            <Card className="flex flex-col h-[400px]">
-                <CardHeader>
-                    <CardTitle>{getFamilyName()}</CardTitle>
-                </CardHeader>
-                <CardContent className="flex-1 p-0">
-                    <div className="flex h-full flex-col">
-                        <div className="flex-1 space-y-4 p-4 overflow-y-auto">
-                            <div className="flex items-end gap-2">
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src="https://picsum.photos/seed/6/100/100" />
-                                    <AvatarFallback>AR</AvatarFallback>
-                                </Avatar>
-                                <div className="max-w-xs rounded-lg bg-secondary p-3">
-                                    <p className="text-sm">¿Hijo, ya vienes a casa a comer?</p>
-                                </div>
-                            </div>
-                            <div className="flex items-end gap-2 justify-end">
-                                <div className="max-w-xs rounded-lg bg-primary text-primary-foreground p-3">
-                                    <p className="text-sm">¡Sí, mamá! Llego en 15 minutos.</p>
-                                </div>
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src={user.photoURL || undefined} />
-                                    <AvatarFallback>TÚ</AvatarFallback>
-                                </Avatar>
-                            </div>
-                            <p className="text-center text-xs text-muted-foreground py-4">Esta es una vista previa. La funcionalidad de chat está en construcción.</p>
-                        </div>
-                        <div className="flex items-center gap-2 border-t p-4">
-                            <Input placeholder="Escribe un mensaje..." disabled />
-                            <Button disabled><Send /></Button>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Family Alerts */}
-             <Card>
+            <FamilyChat user={user} firestore={firestore} />
+            <Card>
                 <CardHeader>
                     <CardTitle>Alertas Familiares</CardTitle>
                     <CardDescription>Alertas recientes enviadas por tus familiares.</CardDescription>
@@ -211,7 +219,6 @@ export default function FamilyPage() {
             </Card>
         </div>
 
-        {/* Right Column */}
         <div className="space-y-6">
             <Card>
                 <CardHeader>
@@ -288,5 +295,3 @@ export default function FamilyPage() {
     </AppShell>
   );
 }
-
-    

@@ -63,11 +63,18 @@
             "description": "The category of the SOS alert.",
             "enum": ["Robo", "Accidentes", "Desastres Naturales", "Personas Sospechosas"]
         },
+        "audience": {
+          "type": "array",
+          "description": "The target audience for the alert (e.g., 'family', 'neighbors').",
+          "items": {
+            "type": "string"
+          }
+        },
         "timestamp": {
           "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp"
         }
       },
-      "required": ["userId", "userName", "message", "location", "category", "timestamp"]
+      "required": ["userId", "userName", "message", "location", "category", "audience", "timestamp"]
     },
     "SurveillanceZone": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -93,6 +100,37 @@
         }
       },
       "required": ["name", "polygon"]
+    },
+    "FamilyMember": {
+      "title": "Family Member",
+      "description": "Represents a family member relationship between two users.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The UID of the family member." },
+        "name": { "type": "string", "description": "The name of the family member." },
+        "email": { "type": "string", "description": "The email of the family member." },
+        "avatarUrl": { "type": "string", "description": "The avatar URL of the family member." },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "accepted", "requested"],
+          "description": "The status of the family connection."
+        }
+      },
+      "required": ["userId", "name", "email", "status"]
+    },
+    "ChatMessage": {
+        "title": "Chat Message",
+        "description": "A single message within a chat.",
+        "type": "object",
+        "properties": {
+            "text": { "type": "string" },
+            "userId": { "type": "string" },
+            "userName": { "type": "string" },
+            "userAvatarUrl": { "type": "string" },
+            "timestamp": { "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp" },
+            "alertId": { "type": "string", "description": "Optional ID of the SOS alert related to this message." }
+        },
+        "required": ["text", "userId", "userName", "timestamp"]
     }
   },
   "auth": {
@@ -107,13 +145,33 @@
       "schema": { "$ref": "#/backend/entities/UserProfile" },
       "description": "Stores public user profiles. Writable by the user themselves."
     },
+    "/users/{userId}/familyMembers/{memberId}": {
+      "schema": { "$ref": "#/backend/entities/FamilyMember" },
+      "description": "Subcollection storing the family members of a user."
+    },
+    "/users/{userId}/alert-feed/{alertId}": {
+      "schema": { "$ref": "#/backend/entities/SosAlert" },
+      "description": "A personalized feed of alerts relevant to the user (from family, neighbors, etc.). This is populated by backend logic."
+    },
     "/sos-alerts/{alertId}": {
       "schema": { "$ref": "#/backend/entities/SosAlert" },
-      "description": "Stores all SOS alerts. Writable by any authenticated user, readable by any authenticated user."
+      "description": "Stores all SOS alerts. Writable by any authenticated user. This collection is processed by backend logic to populate user feeds."
     },
     "/surveillance-zones/{zoneId}": {
       "schema": { "$ref": "#/backend/entities/SurveillanceZone" },
       "description": "Stores the geographical boundaries for each neighborhood watch group."
+    },
+    "/family-chats/{familyId}/messages/{messageId}": {
+        "schema": { "$ref": "#/backend/entities/ChatMessage" },
+        "description": "Messages within a specific family chat."
+    },
+    "/neighborhood-chats/{postalCode}/messages/{messageId}": {
+        "schema": { "$ref": "#/backend/entities/ChatMessage" },
+        "description": "Messages within a specific neighborhood chat, grouped by postal code."
+    },
+    "/group-chats/{groupId}/messages/{messageId}": {
+        "schema": { "$ref": "#/backend/entities/ChatMessage" },
+        "description": "Messages within a specific manually-created group chat."
     }
   }
 }

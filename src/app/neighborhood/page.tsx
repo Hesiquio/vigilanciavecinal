@@ -1,55 +1,86 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
-import { doc } from "firebase/firestore";
-import type { UserProfile } from "@/types";
+import { useFirebase, useDoc, useCollection, useMemoFirebase } from "@/firebase";
+import { doc, collection, query, orderBy, addDoc, serverTimestamp } from "firebase/firestore";
+import type { UserProfile, ChatMessage } from "@/types";
 import { AppShell } from "@/components/AppShell";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Send } from "lucide-react";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
+import { cn } from "@/lib/utils";
 
+const NeighborhoodChat = ({ user, userProfile, firestore }: { user: any, userProfile: UserProfile | null, firestore: any }) => {
+    const postalCode = userProfile?.postalCode;
+    const messagesRef = useMemoFirebase(
+        () => (firestore && postalCode) ? query(collection(firestore, `neighborhood-chats/${postalCode}/messages`), orderBy("timestamp", "asc")) : null,
+        [firestore, postalCode]
+    );
+    const { data: messages, isLoading } = useCollection<ChatMessage>(messagesRef);
+    const [newMessage, setNewMessage] = useState("");
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
-const NeighborhoodChatPlaceholder = ({ title }: { title: string }) => (
-    <div className="flex h-full flex-col">
-        <div className="flex-1 space-y-4 p-4 overflow-y-auto">
-             <div className="flex items-end gap-2">
-                <Avatar className="h-8 w-8">
-                    <AvatarImage src="https://picsum.photos/seed/1/100/100" />
-                    <AvatarFallback>V</AvatarFallback>
-                </Avatar>
-                <div className="max-w-xs rounded-lg bg-secondary p-3">
-                    <p className="text-sm">Hola a todos, ¿todo en orden por la colonia?</p>
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
+
+    const handleSendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newMessage.trim() || !firestore || !postalCode) return;
+
+        const messageData = {
+            text: newMessage,
+            userId: user.uid,
+            userName: user.displayName || "Unknown User",
+            userAvatarUrl: user.photoURL || "",
+            timestamp: serverTimestamp(),
+        };
+        await addDoc(collection(firestore, `neighborhood-chats/${postalCode}/messages`), messageData);
+        setNewMessage("");
+    };
+    
+    const chatTitle = `Chat Vecinal: ${postalCode || '...'}`;
+
+    return (
+        <Card className="flex flex-col h-full">
+            <CardHeader>
+                <CardTitle>{chatTitle}</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 flex-1">
+                <div className="flex h-full flex-col">
+                    <div className="flex-1 space-y-4 p-4 overflow-y-auto">
+                        {isLoading && <p className="text-center">Cargando mensajes...</p>}
+                        {!isLoading && messages?.map((msg) => (
+                           <div key={msg.id} className={cn("flex items-end gap-2", msg.userId === user.uid ? "justify-end" : "justify-start")}>
+                               {msg.userId !== 'system' && msg.userId !== user.uid && <Avatar className="h-8 w-8"><AvatarImage src={msg.userAvatarUrl} /><AvatarFallback>{msg.userName?.charAt(0)}</AvatarFallback></Avatar>}
+                               {msg.userId === 'system' ? (
+                                   <div className="w-full text-center text-xs text-muted-foreground italic my-2">
+                                       <p>{msg.text.split('\n').map((line, i) => <span key={i}>{line}<br/></span>)}</p>
+                                   </div>
+                               ) : (
+                                   <div className={cn("max-w-xs rounded-lg p-3", msg.userId === user.uid ? "bg-primary text-primary-foreground" : "bg-secondary")}>
+                                       <p className="text-sm">{msg.text}</p>
+                                   </div>
+                               )}
+                               {msg.userId !== 'system' && msg.userId === user.uid && <Avatar className="h-8 w-8"><AvatarImage src={user.photoURL || undefined} /><AvatarFallback>TÚ</AvatarFallback></Avatar>}
+                           </div>
+                        ))}
+                         <div ref={messagesEndRef} />
+                    </div>
+                    <form onSubmit={handleSendMessage} className="flex items-center gap-2 border-t p-4">
+                        <Input placeholder="Escribe un mensaje..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} />
+                        <Button type="submit"><Send /></Button>
+                    </form>
                 </div>
-            </div>
-             <div className="flex items-end gap-2 justify-end">
-                <div className="max-w-xs rounded-lg bg-primary text-primary-foreground p-3">
-                    <p className="text-sm">¡Hola! Sí, todo tranquilo por acá. Gracias por preguntar.</p>
-                </div>
-                 <Avatar className="h-8 w-8">
-                    <AvatarImage src={undefined} />
-                    <AvatarFallback>TÚ</AvatarFallback>
-                </Avatar>
-            </div>
-             <p className="text-center text-xs text-muted-foreground py-4">Esta es una vista previa. La funcionalidad de chat está en construcción.</p>
-        </div>
-        <div className="flex items-center gap-2 border-t p-4">
-            <Input placeholder="Escribe un mensaje..." disabled />
-            <Button disabled><Send /></Button>
-        </div>
-    </div>
-);
-
+            </CardContent>
+        </Card>
+    );
+};
 
 export default function NeighborhoodPage() {
   const { user, isUserLoading, auth, firestore } = useFirebase();
@@ -60,7 +91,6 @@ export default function NeighborhoodPage() {
     [user, firestore]
   );
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
-
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -77,7 +107,7 @@ export default function NeighborhoodPage() {
 
   const isLoading = isUserLoading || isProfileLoading;
 
-  if (isLoading || !user) {
+  if (isLoading || !user || !firestore) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
         <p>Cargando...</p>
@@ -85,19 +115,10 @@ export default function NeighborhoodPage() {
     );
   }
 
-  const chatTitle = `Chat Vecinal: ${userProfile?.postalCode || '...'}`;
-
   return (
     <AppShell user={user} onSignOut={handleSignOut}>
        <div className="grid gap-6 lg:grid-cols-2 h-full">
-            <Card className="flex flex-col">
-                 <CardHeader>
-                    <CardTitle>{chatTitle}</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0 flex-1">
-                    <NeighborhoodChatPlaceholder title={chatTitle} />
-                </CardContent>
-            </Card>
+            <NeighborhoodChat user={user} userProfile={userProfile} firestore={firestore} />
             <div className="space-y-6">
                 <RecentActivity />
             </div>
@@ -105,5 +126,3 @@ export default function NeighborhoodPage() {
     </AppShell>
   );
 }
-
-    

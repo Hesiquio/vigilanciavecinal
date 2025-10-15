@@ -23,4 +23,5 @@ export type ChatMessage = {
   userName: string;
   userAvatarUrl: string;
   timestamp: any;
+  alertId?: string;
 };

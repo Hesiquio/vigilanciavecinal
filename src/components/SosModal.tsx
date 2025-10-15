@@ -12,15 +12,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Siren, Mic, Video, MapPin, Send, MessageCircle, ShieldAlert, Users, Heart } from "lucide-react";
+import { Siren, Mic, Video, MapPin, Send, MessageCircle, ShieldAlert, Users, Heart, Loader } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
-import { useFirebase, addDocumentNonBlocking } from "@/firebase";
-import { collection, serverTimestamp } from "firebase/firestore";
+import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
+import { collection, serverTimestamp, addDoc } from "firebase/firestore";
+import { doc } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
+import type { UserProfile } from "@/types";
 
 type SosModalProps = {
     user: User;
@@ -42,7 +44,14 @@ export function SosModal({ user }: SosModalProps) {
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("Ubicación no disponible");
   const [audience, setAudience] = useState<string[]>([]);
+  const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
+
+  const userDocRef = useMemoFirebase(
+    () => (user && firestore ? doc(firestore, "users", user.uid) : null),
+    [user, firestore]
+  );
+  const { data: userProfile } = useDoc<UserProfile>(userDocRef);
 
   useEffect(() => {
     if (isOpen) {
@@ -57,7 +66,7 @@ export function SosModal({ user }: SosModalProps) {
             setLocation("No se pudo obtener la ubicación.");
             toast({
                 title: "Error de Ubicación",
-                description: "No se pudo obtener la ubicación. Por favor, ingrésala manually.",
+                description: "No se pudo obtener la ubicación. Por favor, ingrésala manualmente.",
                 variant: "destructive"
             })
           }
@@ -78,29 +87,45 @@ export function SosModal({ user }: SosModalProps) {
     setAudience(ALL_AUDIENCES);
   }
 
-  const handleSendSos = () => {
+  const postMessageToChats = async (alertId: string, alertMessage: string, alertCategory: string) => {
+      if (!firestore) return;
+
+      const chatMessage = {
+          text: `**ALERTA: ${alertCategory.toUpperCase()}**\n${alertMessage}`,
+          userId: 'system', // Special ID for system messages
+          userName: 'Sistema de Alertas',
+          userAvatarUrl: '', // No avatar for system
+          timestamp: serverTimestamp(),
+          alertId: alertId,
+      };
+
+      // Post to family chat if selected
+      if (audience.includes('family') && userProfile) {
+          const familyId = user.uid; // Use user's UID as family ID for simplicity
+          const familyChatRef = collection(firestore, `family-chats/${familyId}/messages`);
+          await addDoc(familyChatRef, chatMessage);
+      }
+
+      // Post to neighborhood chat if selected
+      if (audience.includes('neighbors') && userProfile?.postalCode) {
+          const neighborhoodChatRef = collection(firestore, `neighborhood-chats/${userProfile.postalCode}/messages`);
+          await addDoc(neighborhoodChatRef, chatMessage);
+      }
+  }
+
+  const handleSendSos = async () => {
+    if (isSending) return;
+
     if (!category) {
-        toast({
-            title: "Categoría Requerida",
-            description: "Por favor, selecciona una categoría para la alerta.",
-            variant: "destructive",
-        });
+        toast({ title: "Categoría Requerida", description: "Por favor, selecciona una categoría para la alerta.", variant: "destructive" });
         return;
     }
      if (message.trim() === "") {
-        toast({
-            title: "Mensaje Requerido",
-            description: "Por favor, describe la emergencia antes de enviar la alerta.",
-            variant: "destructive",
-        });
+        toast({ title: "Mensaje Requerido", description: "Por favor, describe la emergencia.", variant: "destructive" });
         return;
     }
     if (audience.length === 0) {
-        toast({
-            title: "Audiencia Requerida",
-            description: "Por favor, selecciona a quién deseas notificar.",
-            variant: "destructive",
-        });
+        toast({ title: "Audiencia Requerida", description: "Por favor, selecciona a quién deseas notificar.", variant: "destructive" });
         return;
     }
     
@@ -108,29 +133,45 @@ export function SosModal({ user }: SosModalProps) {
         toast({ title: "Error", description: "La base de datos no está disponible.", variant: "destructive" });
         return;
     }
-
-    const alertsCollection = collection(firestore, 'sos-alerts');
-    const newAlert = {
-        userId: user.uid,
-        userName: user.displayName || "Usuario Anónimo",
-        userAvatarUrl: user.photoURL || "",
-        message,
-        location,
-        category,
-        audience,
-        timestamp: serverTimestamp(),
-    };
-
-    addDocumentNonBlocking(alertsCollection, newAlert);
     
-    toast({
-        title: "¡Alerta de Auxilio Enviada!",
-        description: "Los grupos seleccionados han sido notificados.",
-    });
-    setIsOpen(false);
-    setMessage("");
-    setCategory("");
-    setAudience([]);
+    setIsSending(true);
+
+    try {
+        const alertsCollection = collection(firestore, 'sos-alerts');
+        const newAlertData = {
+            userId: user.uid,
+            userName: user.displayName || "Usuario Anónimo",
+            userAvatarUrl: user.photoURL || "",
+            message,
+            location,
+            category,
+            audience,
+            timestamp: serverTimestamp(),
+        };
+
+        // Create the alert document
+        const alertDocRef = await addDoc(alertsCollection, newAlertData);
+        
+        // Post a corresponding message to the selected chats
+        await postMessageToChats(alertDocRef.id, message, category);
+
+        toast({
+            title: "¡Alerta de Auxilio Enviada!",
+            description: "Los grupos seleccionados han sido notificados en sus respectivos chats.",
+        });
+        
+        // Reset form
+        setIsOpen(false);
+        setMessage("");
+        setCategory("");
+        setAudience([]);
+
+    } catch (error) {
+        console.error("Error sending SOS:", error);
+        toast({ title: "Error", description: "No se pudo enviar la alerta.", variant: "destructive" });
+    } finally {
+        setIsSending(false);
+    }
   };
 
   return (
@@ -191,11 +232,6 @@ export function SosModal({ user }: SosModalProps) {
                         />
                         <Label htmlFor="audience-family" className="flex items-center gap-2 text-sm font-normal"><Heart className="h-4 w-4"/> Familia</Label>
                     </div>
-                    {/* Placeholder for future groups */}
-                    {/* <div className="flex items-center gap-2 rounded-md border p-3 opacity-50">
-                        <Checkbox id="audience-groups" disabled />
-                        <Label htmlFor="audience-groups" className="flex items-center gap-2 text-sm font-normal"><Users className="h-4 w-4"/> Grupos</Label>
-                    </div> */}
                </div>
             </div>
             <div className="relative">
@@ -209,7 +245,7 @@ export function SosModal({ user }: SosModalProps) {
             </div>
             <div className="relative">
               <Textarea
-                placeholder="Describe la incidencia (ej. persona sospechosa, vehículo desconocido, actividad inusual, etc.)"
+                placeholder="Describe la incidencia (ej. persona sospechosa, vehículo desconocido, etc.)"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 className="min-h-[100px] pr-10"
@@ -217,19 +253,19 @@ export function SosModal({ user }: SosModalProps) {
               <MessageCircle className="absolute top-3 right-3 h-5 w-5 text-muted-foreground" />
             </div>
             <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" className="flex items-center justify-center gap-2">
+                <Button variant="outline" className="flex items-center justify-center gap-2" disabled>
                     <Mic className="h-4 w-4" /> Grabar Audio
                 </Button>
-                <Button variant="outline" className="flex items-center justify-center gap-2">
+                <Button variant="outline" className="flex items-center justify-center gap-2" disabled>
                     <Video className="h-4 w-4" /> Grabar Video
                 </Button>
             </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleSendSos} className="flex-1">
-              <Send className="mr-2 h-4 w-4" />
-              Enviar Alerta
+            <Button variant="destructive" onClick={handleSendSos} className="flex-1" disabled={isSending}>
+              {isSending ? <Loader className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4" />}
+              {isSending ? "Enviando..." : "Enviar Alerta"}
             </Button>
           </DialogFooter>
         </DialogContent>
