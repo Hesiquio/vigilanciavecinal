@@ -1,14 +1,27 @@
+"use client";
+
 import type { SosAlert } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { MapPin, Phone, MessageCircle } from "lucide-react";
-import { OpenStreetMap } from "./OpenStreetMap";
+import dynamic from "next/dynamic";
+import { useMemo } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type AlertCardProps = {
   alert: SosAlert;
 };
 
 export function AlertCard({ alert }: AlertCardProps) {
+  const OpenStreetMap = useMemo(
+    () =>
+      dynamic(() => import("./OpenStreetMap"), {
+        loading: () => <Skeleton className="h-full w-full" />,
+        ssr: false,
+      }),
+    []
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-4">
