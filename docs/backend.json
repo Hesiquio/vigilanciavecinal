@@ -24,6 +24,10 @@
         "postalCode": {
           "type": "string",
           "description": "The user's postal code for location-based grouping."
+        },
+        "location": {
+            "type": "string",
+            "description": "The user's last known location as a string 'Lat: XX.XXXX, Lon: YY.YYYY'."
         }
       },
       "required": ["name", "email"]
@@ -89,6 +93,36 @@
         }
       },
       "required": ["name", "polygon"]
+    },
+    "FamilyMember": {
+      "title": "Family Member",
+      "description": "Represents a family member relationship between two users.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The UID of the family member." },
+        "name": { "type": "string", "description": "The name of the family member." },
+        "email": { "type": "string", "description": "The email of the family member." },
+        "avatarUrl": { "type": "string", "description": "The avatar URL of the family member." },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "accepted", "requested"],
+          "description": "The status of the family connection."
+        }
+      },
+      "required": ["userId", "name", "email", "status"]
+    },
+    "ChatMessage": {
+        "title": "Chat Message",
+        "description": "A single message within a chat.",
+        "type": "object",
+        "properties": {
+            "text": { "type": "string" },
+            "userId": { "type": "string" },
+            "userName": { "type": "string" },
+            "userAvatarUrl": { "type": "string" },
+            "timestamp": { "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp" }
+        },
+        "required": ["text", "userId", "userName", "timestamp"]
     }
   },
   "auth": {
@@ -103,6 +137,10 @@
       "schema": { "$ref": "#/backend/entities/UserProfile" },
       "description": "Stores public user profiles. Writable by the user themselves."
     },
+    "/users/{userId}/familyMembers/{memberId}": {
+      "schema": { "$ref": "#/backend/entities/FamilyMember" },
+      "description": "Subcollection storing the family members of a user."
+    },
     "/sos-alerts/{alertId}": {
       "schema": { "$ref": "#/backend/entities/SosAlert" },
       "description": "Stores all SOS alerts. Writable by any authenticated user, readable by any authenticated user."
@@ -110,7 +148,14 @@
     "/surveillance-zones/{zoneId}": {
       "schema": { "$ref": "#/backend/entities/SurveillanceZone" },
       "description": "Stores the geographical boundaries for each neighborhood watch group."
+    },
+    "/family-chats/{familyId}/messages/{messageId}": {
+        "schema": { "$ref": "#/backend/entities/ChatMessage" },
+        "description": "Messages within a specific family chat."
+    },
+    "/neighborhood-chats/{postalCode}/messages/{messageId}": {
+        "schema": { "$ref": "#/backend/entities/ChatMessage" },
+        "description": "Messages within a specific neighborhood chat, grouped by postal code."
     }
   }
 }
-
