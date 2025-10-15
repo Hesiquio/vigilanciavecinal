@@ -171,7 +171,7 @@ export function AppShell() {
       </header>
       
       <main className="flex-1 overflow-y-auto p-4 pb-24 md:p-6">
-        <DashboardContent alerts={alerts} currentUser={currentUser} />
+         <DashboardContent alerts={alerts} currentUser={currentUser} />
       </main>
 
       <SosModal onSendSos={handleAddAlert} />

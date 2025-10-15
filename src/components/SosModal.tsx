@@ -40,7 +40,7 @@ export function SosModal({ onSendSos }: SosModalProps) {
             setLocation("No se pudo obtener la ubicación.");
             toast({
                 title: "Error de Ubicación",
-                description: "No se pudo obtener la ubicación. Por favor, ingrésala manualmente.",
+                description: "No se pudo obtener la ubicación. Por favor, ingrésala manually.",
                 variant: "destructive"
             })
           }
@@ -87,10 +87,10 @@ export function SosModal({ onSendSos }: SosModalProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-headline text-destructive">
               <Siren className="h-6 w-6" />
-              Agregar Alerta
+              Reportar Incidencia
             </DialogTitle>
             <DialogDescription>
-              Tu ubicación actual será compartida con tu grupo. Describe la emergencia para validarla.
+              Tu ubicación actual será compartida con tu grupo de vigilancia vecinal. Describe la emergencia para que sea validada por el grupo.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -105,7 +105,7 @@ export function SosModal({ onSendSos }: SosModalProps) {
             </div>
             <div className="relative">
               <Textarea
-                placeholder="Describe la emergencia (ej. persona sospechosa, accidente, etc.)"
+                placeholder="Describe la incidencia (ej. persona sospechosa, vehículo desconocido, actividad inusual, etc.)"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 className="min-h-[100px] pr-10"
@@ -125,7 +125,7 @@ export function SosModal({ onSendSos }: SosModalProps) {
             <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancelar</Button>
             <Button variant="destructive" onClick={handleSendSos} className="flex-1">
               <Send className="mr-2 h-4 w-4" />
-              Enviar Alerta
+              Enviar Alerta al Grupo
             </Button>
           </DialogFooter>
         </DialogContent>
