@@ -15,6 +15,15 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { User } from "@/lib/data";
+import GoogleMap from "@/components/dashboard/GoogleMap";
+
+// Example coordinates for a neighborhood polygon
+const neighborhoodPolygon = [
+  { lat: 19.435, lng: -99.135 },
+  { lat: 19.430, lng: -99.135 },
+  { lat: 19.430, lng: -99.130 },
+  { lat: 19.435, lng: -99.130 },
+];
 
 export default function SettingsPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -44,6 +53,21 @@ export default function SettingsPage() {
     <AppShell>
       <div className="space-y-6">
         <h2 className="text-2xl font-headline font-bold">Ajustes</h2>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Mi Zona de Vigilancia</CardTitle>
+            <CardDescription>
+              Esta es el área geográfica que tu grupo de vigilancia cubre.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="relative h-64 w-full rounded-lg overflow-hidden">
+               <GoogleMap polygon={neighborhoodPolygon} />
+            </div>
+             <Button variant="outline" className="mt-4 w-full">Editar Zona</Button>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
