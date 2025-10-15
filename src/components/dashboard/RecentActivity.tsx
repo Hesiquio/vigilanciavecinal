@@ -6,8 +6,8 @@ export function RecentActivity() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Actividad Reciente del Grupo</CardTitle>
-        <CardDescription>Últimas incidencias y comunicaciones en tu colonia.</CardDescription>
+        <CardTitle>Actividad Reciente</CardTitle>
+        <CardDescription>Últimos avisos y comunicaciones en tus grupos.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-4 rounded-lg bg-secondary/50 p-3">
@@ -16,11 +16,11 @@ export function RecentActivity() {
           </div>
           <div>
             <p className="text-sm font-medium">Junta Vecinal Mañana</p>
-            <p className="text-xs text-muted-foreground">Confirmada para las 7:00 PM en el salón comunal para organizar rondas.</p>
+            <p className="text-xs text-muted-foreground">Se convoca a junta para organizar rondas de vigilancia. 7:00 PM en el salón comunal.</p>
           </div>
         </div>
          <div className="flex items-center gap-4 rounded-lg bg-secondary/50 p-3">
-          <div className="rounded-full bg-accent/10 p-2 text-accent">
+          <div className="rounded-full bg-yellow-500/10 p-2 text-yellow-500">
             <ShieldAlert className="h-5 w-5" />
           </div>
           <div>

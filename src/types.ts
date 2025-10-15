@@ -1,4 +1,5 @@
 
+
 export type UserProfile = {
   name: string;
   email: string;
@@ -47,3 +48,15 @@ export type ChatMessage = {
   timestamp: any;
   alertId?: string;
 };
+
+export type Aviso = {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatarUrl: string;
+  title: string;
+  description: string;
+  eventTimestamp: any;
+  audience: string[];
+  timestamp: any;
+}

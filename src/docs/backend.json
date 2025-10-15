@@ -76,6 +76,25 @@
       },
       "required": ["userId", "userName", "message", "location", "category", "audience", "timestamp"]
     },
+    "Aviso": {
+      "title": "Aviso",
+      "description": "Represents a non-urgent announcement for meetings, events, etc.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userAvatarUrl": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "eventTimestamp": { "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp" },
+        "audience": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "timestamp": { "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp" }
+      },
+      "required": ["userId", "userName", "title", "description", "eventTimestamp", "audience", "timestamp"]
+    },
     "SurveillanceZone": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Surveillance Zone",
@@ -204,6 +223,10 @@
     "/sos-alerts/{alertId}": {
       "schema": { "$ref": "#/backend/entities/SosAlert" },
       "description": "Stores all SOS alerts. Writable by any authenticated user. This collection is processed by backend logic to populate user feeds."
+    },
+     "/avisos/{avisoId}": {
+      "schema": { "$ref": "#/backend/entities/Aviso" },
+      "description": "Stores all non-urgent announcements."
     },
     "/surveillance-zones/{zoneId}": {
       "schema": { "$ref": "#/backend/entities/SurveillanceZone" },

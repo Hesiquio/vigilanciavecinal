@@ -6,7 +6,8 @@ import React from "react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SosModal } from "./SosModal";
-import { Bell, LogOut, User as UserIcon, Home, MessageSquare, Users, Shield, Heart } from "lucide-react";
+import { AvisoModal } from "./AvisoModal";
+import { Bell, LogOut, User as UserIcon, Home, MessageSquare, Users, Shield, Heart, Megaphone } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -94,6 +95,7 @@ export function AppShell({ user, onSignOut, children }: { user: User, onSignOut:
         </nav>
 
         <div className="flex items-center gap-4 ml-auto">
+          {user && <AvisoModal user={user} />}
           <Bell className="h-6 w-6 text-muted-foreground" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
