@@ -118,6 +118,42 @@
       },
       "required": ["userId", "name", "email", "status"]
     },
+    "Group": {
+        "title": "Group",
+        "description": "Represents a user-created group.",
+        "type": "object",
+        "properties": {
+            "name": { "type": "string", "description": "The name of the group." },
+            "ownerId": { "type": "string", "description": "The UID of the user who owns the group." }
+        },
+        "required": ["name", "ownerId"]
+    },
+    "GroupMember": {
+        "title": "Group Member",
+        "description": "Represents a member of a user-created group.",
+        "type": "object",
+        "properties": {
+            "userId": { "type": "string", "description": "The UID of the group member." },
+            "name": { "type": "string", "description": "The name of the group member." },
+            "email": { "type": "string", "description": "The email of the group member." },
+            "avatarUrl": { "type": "string", "description": "The avatar URL of the group member." },
+            "status": {
+                "type": "string",
+                "enum": ["pending", "accepted", "requested"],
+                "description": "The status of the group membership."
+            }
+        },
+        "required": ["userId", "name", "email", "status"]
+    },
+    "UserGroup": {
+        "title": "User Group",
+        "description": "A reference to a group a user is a member of.",
+        "type": "object",
+        "properties": {
+            "name": { "type": "string", "description": "The name of the group." }
+        },
+        "required": ["name"]
+    },
     "ChatMessage": {
         "title": "Chat Message",
         "description": "A single message within a chat.",
@@ -149,6 +185,10 @@
       "schema": { "$ref": "#/backend/entities/FamilyMember" },
       "description": "Subcollection storing the family members of a user."
     },
+     "/users/{userId}/groups/{groupId}": {
+      "schema": { "$ref": "#/backend/entities/UserGroup" },
+      "description": "Subcollection storing references to groups a user is a member of."
+    },
     "/users/{userId}/alert-feed/{alertId}": {
       "schema": { "$ref": "#/backend/entities/SosAlert" },
       "description": "A personalized feed of alerts relevant to the user (from family, neighbors, etc.). This is populated by backend logic."
@@ -168,6 +208,14 @@
     "/neighborhood-chats/{postalCode}/messages/{messageId}": {
         "schema": { "$ref": "#/backend/entities/ChatMessage" },
         "description": "Messages within a specific neighborhood chat, grouped by postal code."
+    },
+    "/groups/{groupId}": {
+      "schema": { "$ref": "#/backend/entities/Group" },
+      "description": "Stores metadata for user-created groups."
+    },
+    "/groups/{groupId}/members/{memberId}": {
+      "schema": { "$ref": "#/backend/entities/GroupMember" },
+      "description": "Stores the members of a specific user-created group."
     },
     "/group-chats/{groupId}/messages/{messageId}": {
         "schema": { "$ref": "#/backend/entities/ChatMessage" },

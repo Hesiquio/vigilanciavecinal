@@ -1,0 +1,292 @@
+
+"use client";
+
+import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useFirebase, useCollection, useDoc, useMemoFirebase } from "@/firebase";
+import { AppShell } from "@/components/AppShell";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy } from "firebase/firestore";
+import { doc } from "firebase/firestore";
+import type { GroupMember, UserProfile, ChatMessage, Group } from "@/types";
+import { Loader, UserPlus, Check, Send, AlertCircle, ArrowLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+
+async function findUserByEmail(db: any, email: string): Promise<(UserProfile & {id: string}) | null> {
+  const usersRef = collection(db, "users");
+  const q = query(usersRef, where("email", "==", email));
+  const querySnapshot = await getDocs(q);
+  if (querySnapshot.empty) {
+    return null;
+  }
+  const userDoc = querySnapshot.docs[0];
+  return { id: userDoc.id, ...userDoc.data() as UserProfile };
+}
+
+async function sendGroupRequest(db: any, currentUser: any, targetUser: UserProfile & {id: string}, groupId: string, groupName: string) {
+    const batch = writeBatch(db);
+    // Add pending member to the group's member list
+    const groupMemberRef = doc(db, "groups", groupId, "members", targetUser.id);
+    batch.set(groupMemberRef, {
+        userId: targetUser.id,
+        name: targetUser.name,
+        email: targetUser.email,
+        avatarUrl: targetUser.avatarUrl,
+        status: 'pending',
+    });
+    // Add requested group to the target user's group list
+    const targetUserGroupRef = doc(db, "users", targetUser.id, "groups", groupId);
+    batch.set(targetUserGroupRef, {
+        name: groupName,
+        status: 'pending' // custom status to indicate an invitation
+    });
+    await batch.commit();
+}
+
+
+async function acceptGroupRequest(db: any, currentUser: any, memberId: string, groupId: string) {
+    const batch = writeBatch(db);
+    const groupMemberRef = doc(db, "groups", groupId, "members", memberId);
+    batch.update(groupMemberRef, { status: 'accepted' });
+
+    // This part is tricky because the owner isn't a "member" in their own list in the same way
+    // For now, let's just accept on the group level. A full implementation might need more complex logic.
+    await batch.commit();
+}
+
+
+const GroupChat = ({ user, firestore, groupId, groupName }: { user: any, firestore: any, groupId: string, groupName: string }) => {
+    const messagesRef = useMemoFirebase(
+        () => firestore && groupId ? query(collection(firestore, `group-chats/${groupId}/messages`), orderBy("timestamp", "asc")) : null,
+        [firestore, groupId]
+    );
+    const { data: messages, isLoading } = useCollection<ChatMessage>(messagesRef);
+    const [newMessage, setNewMessage] = useState("");
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
+
+    const handleSendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newMessage.trim() || !firestore) return;
+        const messageData = {
+            text: newMessage,
+            userId: user.uid,
+            userName: user.displayName || "Unknown User",
+            userAvatarUrl: user.photoURL || "",
+            timestamp: serverTimestamp(),
+        };
+        await addDoc(collection(firestore, `group-chats/${groupId}/messages`), messageData);
+        setNewMessage("");
+    };
+
+    return (
+        <Card className="flex flex-col h-[400px]">
+            <CardHeader>
+                <CardTitle>{groupName || "Chat de Grupo"}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 p-0">
+                <div className="flex h-full flex-col">
+                    <div className="flex-1 space-y-4 p-4 overflow-y-auto">
+                        {isLoading && <p className="text-center">Cargando mensajes...</p>}
+                        {!isLoading && messages && messages.map((msg) => (
+                            <div key={msg.id} className={cn("flex items-end gap-2", msg.userId === user.uid ? "justify-end" : "justify-start")}>
+                                {msg.userId !== 'system' && msg.userId !== user.uid && <Avatar className="h-8 w-8"><AvatarImage src={msg.userAvatarUrl} /><AvatarFallback>{msg.userName?.charAt(0)}</AvatarFallback></Avatar>}
+                                {msg.userId === 'system' ? (
+                                    <div className="w-full text-center text-xs text-muted-foreground italic my-2">
+                                        <p>{msg.text.split('\n').map((line, i) => <span key={i}>{line}<br/></span>)}</p>
+                                    </div>
+                                ) : (
+                                    <div className={cn("max-w-xs rounded-lg p-3", msg.userId === user.uid ? "bg-primary text-primary-foreground" : "bg-secondary")}>
+                                        <p className="text-sm">{msg.text}</p>
+                                    </div>
+                                )}
+                                {msg.userId !== 'system' && msg.userId === user.uid && <Avatar className="h-8 w-8"><AvatarImage src={user.photoURL || undefined} /><AvatarFallback>TÚ</AvatarFallback></Avatar>}
+                            </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                    </div>
+                    <form onSubmit={handleSendMessage} className="flex items-center gap-2 border-t p-4">
+                        <Input placeholder="Escribe un mensaje..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} />
+                        <Button type="submit"><Send /></Button>
+                    </form>
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
+
+
+export default function GroupDetailPage({ params }: { params: { groupId: string } }) {
+  const { groupId } = params;
+  const { user, isUserLoading, auth, firestore } = useFirebase();
+  const router = useRouter();
+  const { toast } = useToast();
+  
+  const [searchEmail, setSearchEmail] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+
+  const groupDocRef = useMemoFirebase(
+    () => (firestore && groupId ? doc(firestore, 'groups', groupId) : null),
+    [firestore, groupId]
+  );
+  const { data: groupData, isLoading: isLoadingGroupData } = useDoc<Group>(groupDocRef);
+  
+  const membersQuery = useMemoFirebase(
+    () => (firestore && groupId ? collection(firestore, `groups/${groupId}/members`) : null),
+    [firestore, groupId]
+  );
+  const { data: members, isLoading: isLoadingMembers } = useCollection<GroupMember>(membersQuery);
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push("/login");
+    }
+  }, [user, isUserLoading, router]);
+
+  const handleSignOut = async () => {
+    if (auth) {
+      await auth.signOut();
+      router.push("/login");
+    }
+  };
+  
+  const handleSearchAndAdd = async () => {
+    if (!firestore || !user || !searchEmail || !groupData) return;
+    setIsSearching(true);
+    try {
+      const targetUser = await findUserByEmail(firestore, searchEmail);
+      if (!targetUser) {
+        toast({ title: "Usuario no encontrado", description: "No se encontró ningún usuario con ese correo electrónico.", variant: "destructive" });
+      } else if (targetUser.id === user.uid) {
+        toast({ title: "Acción no permitida", description: "Ya eres miembro de este grupo.", variant: "destructive" });
+      }
+      else {
+        // A simple request sending without checking for existing membership for now
+        await sendGroupRequest(firestore, user, targetUser, groupId, groupData.name);
+        toast({ title: "Solicitud Enviada", description: `Se ha enviado una solicitud a ${targetUser.name} para unirse al grupo.` });
+        setSearchEmail("");
+      }
+    } catch (error) {
+      console.error("Error adding group member:", error);
+      toast({ title: "Error", description: "No se pudo enviar la solicitud.", variant: "destructive" });
+    }
+    setIsSearching(false);
+  };
+  
+  // Accept request logic needs context of who is accepting. This is simplified.
+  // A real implementation would check if the current user has rights to accept.
+  const handleAcceptRequest = async (memberId: string) => {
+    if (!firestore || !user) return;
+    try {
+        await acceptGroupRequest(firestore, user, memberId, groupId);
+        toast({ title: "Solicitud Aceptada", description: "El usuario ahora es miembro del grupo." });
+    } catch (error) {
+        console.error("Error accepting request:", error);
+        toast({ title: "Error", description: "No se pudo aceptar la solicitud.", variant: "destructive" });
+    }
+  };
+
+
+  if (isUserLoading || isLoadingGroupData || !user || !firestore) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
+        <p>Cargando...</p>
+      </div>
+    );
+  }
+
+  return (
+    <AppShell user={user} onSignOut={handleSignOut}>
+       <Link href="/groups" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
+        <ArrowLeft className="h-4 w-4" />
+        Volver a Mis Grupos
+      </Link>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-6">
+            <GroupChat user={user} firestore={firestore} groupId={groupId} groupName={groupData?.name || ''} />
+            <Card>
+                <CardHeader>
+                    <CardTitle>Alertas del Grupo</CardTitle>
+                    <CardDescription>Alertas recientes enviadas en este grupo.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 text-center text-sm text-muted-foreground">
+                    <AlertCircle className="mx-auto h-8 w-8"/>
+                    <p>La funcionalidad de alertas de grupo está en construcción.</p>
+                </CardContent>
+            </Card>
+        </div>
+
+        <div className="space-y-6">
+             <Card>
+                <CardHeader>
+                    <CardTitle>Añadir Miembro</CardTitle>
+                </CardHeader>
+                <CardContent className="flex gap-2">
+                    <Input 
+                        type="email" 
+                        placeholder="correo@ejemplo.com"
+                        value={searchEmail}
+                        onChange={(e) => setSearchEmail(e.target.value)} 
+                    />
+                    <Button onClick={handleSearchAndAdd} disabled={isSearching}>
+                        {isSearching ? <Loader className="animate-spin" /> : <UserPlus />}
+                    </Button>
+                </CardContent>
+            </Card>
+            
+            <Card>
+                <CardHeader>
+                    <CardTitle>Miembros del Grupo</CardTitle>
+                    <CardDescription>Gestiona los miembros y sus solicitudes.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                {isLoadingMembers ? (
+                    <p>Cargando miembros...</p>
+                ) : (
+                    <ul className="space-y-4">
+                    {members && members.length > 0 ? (
+                        members.map((member) => (
+                        <li key={member.id} className="flex items-center justify-between gap-4 p-2 rounded-lg bg-secondary/50">
+                            <div className="flex items-center gap-3">
+                            <Avatar>
+                                <AvatarImage src={member.avatarUrl} />
+                                <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <p className="font-semibold">{member.name}</p>
+                                <p className="text-xs text-muted-foreground">{member.email}</p>
+                            </div>
+                            </div>
+                            <div>
+                            {/* This logic is simplified: only shows for owner/admin in a real app */}
+                            {member.status === 'pending' && user.uid === groupData?.ownerId && (
+                                <Button size="sm" onClick={() => handleAcceptRequest(member.id)}>
+                                <Check className="mr-2 h-4 w-4" /> Aceptar
+                                </Button>
+                            )}
+                            {member.status === 'pending' && user.uid !== groupData?.ownerId && <p className="text-xs text-muted-foreground pr-2">Pendiente</p>}
+                            {member.status === 'requested' && <p className="text-xs text-muted-foreground pr-2">Solicitud enviada</p>}
+                            {member.status === 'accepted' && <p className="text-xs text-green-500 pr-2">Miembro</p>}
+                            </div>
+                        </li>
+                        ))
+                    ) : (
+                        <p className="text-center text-sm text-muted-foreground">Este grupo aún no tiene miembros.</p>
+                    )}
+                    </ul>
+                )}
+                </CardContent>
+            </Card>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
