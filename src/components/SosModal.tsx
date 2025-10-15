@@ -12,13 +12,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Siren, Mic, Video, MapPin, Send, MessageCircle, ShieldAlert } from "lucide-react";
+import { Siren, Mic, Video, MapPin, Send, MessageCircle, ShieldAlert, Users, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
 import { useFirebase, addDocumentNonBlocking } from "@/firebase";
 import { collection, serverTimestamp } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Label } from "./ui/label";
+import { Checkbox } from "./ui/checkbox";
 
 type SosModalProps = {
     user: User;
@@ -37,6 +39,7 @@ export function SosModal({ user }: SosModalProps) {
   const [message, setMessage] = useState("");
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("Ubicación no disponible");
+  const [audience, setAudience] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -52,7 +55,7 @@ export function SosModal({ user }: SosModalProps) {
             setLocation("No se pudo obtener la ubicación.");
             toast({
                 title: "Error de Ubicación",
-                description: "No se pudo obtener la ubicación. Por favor, ingrésala manualmente.",
+                description: "No se pudo obtener la ubicación. Por favor, ingrésala manually.",
                 variant: "destructive"
             })
           }
@@ -62,6 +65,12 @@ export function SosModal({ user }: SosModalProps) {
       }
     }
   }, [isOpen, toast]);
+  
+  const handleAudienceChange = (checked: boolean, value: string) => {
+    setAudience(prev => 
+        checked ? [...prev, value] : prev.filter(item => item !== value)
+    );
+  }
 
   const handleSendSos = () => {
     if (!category) {
@@ -80,6 +89,14 @@ export function SosModal({ user }: SosModalProps) {
         });
         return;
     }
+    if (audience.length === 0) {
+        toast({
+            title: "Audiencia Requerida",
+            description: "Por favor, selecciona a quién deseas notificar.",
+            variant: "destructive",
+        });
+        return;
+    }
     
     if (!firestore) {
         toast({ title: "Error", description: "La base de datos no está disponible.", variant: "destructive" });
@@ -94,6 +111,7 @@ export function SosModal({ user }: SosModalProps) {
         message,
         location,
         category,
+        audience,
         timestamp: serverTimestamp(),
     };
 
@@ -101,11 +119,12 @@ export function SosModal({ user }: SosModalProps) {
     
     toast({
         title: "¡Alerta de Auxilio Enviada!",
-        description: "Tu grupo ha sido notificado y tu ubicación compartida.",
+        description: "Los grupos seleccionados han sido notificados.",
     });
     setIsOpen(false);
     setMessage("");
     setCategory("");
+    setAudience([]);
   };
 
   return (
@@ -127,7 +146,7 @@ export function SosModal({ user }: SosModalProps) {
               Reportar Incidencia
             </DialogTitle>
             <DialogDescription>
-              Tu ubicación actual será compartida con tu grupo de vigilancia vecinal. Describe la emergencia para que sea validada por el grupo.
+              Tu ubicación actual será compartida con los grupos que selecciones. Describe la emergencia para que sea validada.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -143,6 +162,24 @@ export function SosModal({ user }: SosModalProps) {
                         ))}
                     </SelectContent>
                 </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Notificar a:</Label>
+               <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2 rounded-md border p-3">
+                        <Checkbox id="audience-neighbors" onCheckedChange={(checked) => handleAudienceChange(!!checked, 'neighbors')} />
+                        <Label htmlFor="audience-neighbors" className="flex items-center gap-2 text-sm font-normal"><ShieldAlert className="h-4 w-4"/> Vecinos</Label>
+                    </div>
+                     <div className="flex items-center gap-2 rounded-md border p-3">
+                        <Checkbox id="audience-family" onCheckedChange={(checked) => handleAudienceChange(!!checked, 'family')} />
+                        <Label htmlFor="audience-family" className="flex items-center gap-2 text-sm font-normal"><Heart className="h-4 w-4"/> Familia</Label>
+                    </div>
+                    {/* Placeholder for future groups */}
+                    {/* <div className="flex items-center gap-2 rounded-md border p-3 opacity-50">
+                        <Checkbox id="audience-groups" disabled />
+                        <Label htmlFor="audience-groups" className="flex items-center gap-2 text-sm font-normal"><Users className="h-4 w-4"/> Grupos</Label>
+                    </div> */}
+               </div>
             </div>
             <div className="relative">
                 <MapPin className="absolute top-3 left-3 h-4 w-4 text-primary" />
@@ -175,7 +212,7 @@ export function SosModal({ user }: SosModalProps) {
             <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancelar</Button>
             <Button variant="destructive" onClick={handleSendSos} className="flex-1">
               <Send className="mr-2 h-4 w-4" />
-              Enviar Alerta al Grupo
+              Enviar Alerta
             </Button>
           </DialogFooter>
         </DialogContent>
