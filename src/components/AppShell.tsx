@@ -52,7 +52,7 @@ export function AppShell({ user, onSignOut, children }: { user: User, onSignOut:
     <div className="flex h-screen w-full flex-col bg-background">
       <header className="flex h-16 shrink-0 items-center justify-between border-b bg-card px-4 shadow-sm md:px-6">
         <div className="flex items-center gap-4">
-           <Link href="/" className="flex items-center gap-2">
+           <Link href="/" className="flex items-center gap-2 mr-6">
              <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="24"
