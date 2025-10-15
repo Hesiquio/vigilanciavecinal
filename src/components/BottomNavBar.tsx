@@ -3,12 +3,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, MessageSquare, Map, User } from "lucide-react";
+import { Home, MessageSquare, Map, User, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Grupo", icon: Home },
-  { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/chat", label: "Chats", icon: MessageSquare },
   { href: "/family-map", label: "Familia", icon: Map },
   { href: "/settings", label: "Perfil", icon: User },
 ];
@@ -20,7 +20,7 @@ export function BottomNavBar() {
     <div className="fixed bottom-0 left-0 right-0 z-10 border-t bg-background/95 backdrop-blur-sm md:hidden">
       <nav className="grid h-16 grid-cols-4 items-center">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname.startsWith(item.href) && (item.href !== '/' || pathname === '/');
           return (
             <Link
               key={item.href}

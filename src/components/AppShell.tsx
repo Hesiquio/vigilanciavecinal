@@ -6,7 +6,7 @@ import React from "react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SosModal } from "./SosModal";
-import { Bell, LogOut, User as UserIcon, Home, MessageSquare, Map } from "lucide-react";
+import { Bell, LogOut, User as UserIcon, Home, MessageSquare, Map, Users } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,7 +40,8 @@ export interface SosAlert {
 
 const navItems = [
   { href: "/", label: "Grupo", icon: Home },
-  { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/neighborhood-chat", label: "Chat Vecinal", icon: MessageSquare },
+  { href: "/family-chat", label: "Chat Familiar", icon: Users },
   { href: "/family-map", label: "Familia", icon: Map },
 ];
 
@@ -72,7 +73,7 @@ export function AppShell({ user, onSignOut, children }: { user: User, onSignOut:
 
         <nav className="hidden items-center gap-2 md:flex">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname.startsWith(item.href) && (item.href !== '/' || pathname === '/');
             return (
               <Button key={item.href} asChild variant="ghost" className={cn(isActive && "bg-secondary")}>
                  <Link
