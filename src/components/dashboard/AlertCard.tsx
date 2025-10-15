@@ -1,12 +1,15 @@
+
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { MapPin, Phone, MessageCircle } from "lucide-react";
+import { MapPin, Phone, MessageCircle, ShieldAlert, Siren, CloudSunRain, UserX } from "lucide-react";
 import GoogleMap from "./GoogleMap";
-import { SosAlert } from "../AppShell";
+import type { SosAlert, AlertCategory } from "../AppShell";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { cn } from "@/lib/utils";
+import React from "react";
 
 type AlertCardProps = {
   alert: SosAlert;
@@ -31,14 +34,30 @@ const formatTimestamp = (timestamp: SosAlert['timestamp']): string => {
   return `hace ${formatDistanceToNow(date, { locale: es })}`;
 }
 
+const categoryIcons: Record<AlertCategory, React.ElementType> = {
+    "Robo": ShieldAlert,
+    "Accidentes": Siren,
+    "Desastres Naturales": CloudSunRain,
+    "Personas Sospechosas": UserX,
+}
+
+const categoryColors: Record<AlertCategory, string> = {
+    "Robo": "border-red-500/50 text-red-500",
+    "Accidentes": "border-orange-500/50 text-orange-500",
+    "Desastres Naturales": "border-blue-500/50 text-blue-500",
+    "Personas Sospechosas": "border-yellow-500/50 text-yellow-500",
+}
+
 
 export function AlertCard({ alert }: AlertCardProps) {
   const markerPosition = parseLocation(alert.location);
+  const Icon = categoryIcons[alert.category] || ShieldAlert;
+  const colorClass = categoryColors[alert.category] || "border-destructive/50 text-destructive";
 
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-4">
-        <Avatar className="h-12 w-12 border-2 border-destructive">
+        <Avatar className={cn("h-12 w-12 border-2", colorClass)}>
           <AvatarImage src={alert.userAvatarUrl} alt={alert.userName} />
           <AvatarFallback>{alert.userName?.charAt(0)}</AvatarFallback>
         </Avatar>
@@ -47,7 +66,11 @@ export function AlertCard({ alert }: AlertCardProps) {
             <p className="font-bold text-foreground">{alert.userName}</p>
             <p className="text-xs text-muted-foreground">{formatTimestamp(alert.timestamp)}</p>
           </div>
-          <p className="text-sm text-foreground">{alert.message}</p>
+           <div className={cn("mt-1 flex items-center gap-2 text-sm font-semibold", colorClass)}>
+                <Icon className="h-4 w-4" />
+                <span>{alert.category}</span>
+            </div>
+          <p className="mt-1 text-sm text-foreground">{alert.message}</p>
           <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4" />
             <span>{alert.location}</span>

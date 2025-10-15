@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -11,21 +12,30 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Siren, Mic, Video, MapPin, Send, MessageCircle } from "lucide-react";
+import { Siren, Mic, Video, MapPin, Send, MessageCircle, ShieldAlert } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
 import { useFirebase, addDocumentNonBlocking } from "@/firebase";
 import { collection, serverTimestamp } from "firebase/firestore";
 import type { User } from "firebase/auth";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 type SosModalProps = {
     user: User;
 }
 
+const alertCategories = [
+    "Robo",
+    "Accidentes",
+    "Desastres Naturales",
+    "Personas Sospechosas",
+]
+
 export function SosModal({ user }: SosModalProps) {
   const { firestore } = useFirebase();
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const [category, setCategory] = useState("");
   const [location, setLocation] = useState("Ubicación no disponible");
   const { toast } = useToast();
 
@@ -42,7 +52,7 @@ export function SosModal({ user }: SosModalProps) {
             setLocation("No se pudo obtener la ubicación.");
             toast({
                 title: "Error de Ubicación",
-                description: "No se pudo obtener la ubicación. Por favor, ingrésala manually.",
+                description: "No se pudo obtener la ubicación. Por favor, ingrésala manualmente.",
                 variant: "destructive"
             })
           }
@@ -54,7 +64,15 @@ export function SosModal({ user }: SosModalProps) {
   }, [isOpen, toast]);
 
   const handleSendSos = () => {
-    if (message.trim() === "") {
+    if (!category) {
+        toast({
+            title: "Categoría Requerida",
+            description: "Por favor, selecciona una categoría para la alerta.",
+            variant: "destructive",
+        });
+        return;
+    }
+     if (message.trim() === "") {
         toast({
             title: "Mensaje Requerido",
             description: "Por favor, describe la emergencia antes de enviar la alerta.",
@@ -75,6 +93,7 @@ export function SosModal({ user }: SosModalProps) {
         userAvatarUrl: user.photoURL || "",
         message,
         location,
+        category,
         timestamp: serverTimestamp(),
     };
 
@@ -86,6 +105,7 @@ export function SosModal({ user }: SosModalProps) {
     });
     setIsOpen(false);
     setMessage("");
+    setCategory("");
   };
 
   return (
@@ -93,7 +113,7 @@ export function SosModal({ user }: SosModalProps) {
       <Button
         onClick={() => setIsOpen(true)}
         variant="destructive"
-        className="fixed bottom-6 right-6 z-20 h-16 w-16 rounded-full shadow-2xl animate-pulse"
+        className="fixed bottom-20 right-4 z-20 h-16 w-16 rounded-full shadow-2xl animate-pulse md:bottom-6 md:right-6"
         aria-label="Enviar Alerta de Auxilio"
       >
         <Siren className="h-8 w-8" />
@@ -111,6 +131,19 @@ export function SosModal({ user }: SosModalProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+             <div className="relative">
+                <ShieldAlert className="absolute top-3 left-3 h-4 w-4 text-primary" />
+                 <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger className="pl-9">
+                        <SelectValue placeholder="Selecciona una categoría..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {alertCategories.map((cat) => (
+                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
             <div className="relative">
                 <MapPin className="absolute top-3 left-3 h-4 w-4 text-primary" />
                 <Input 

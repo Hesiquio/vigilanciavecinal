@@ -17,6 +17,8 @@ import {
 import type { User } from "firebase/auth";
 import { BottomNavBar } from "./BottomNavBar";
 
+export type AlertCategory = "Robo" | "Accidentes" | "Desastres Naturales" | "Personas Sospechosas";
+
 export interface SosAlert {
   id: string;
   userId: string;
@@ -28,6 +30,7 @@ export interface SosAlert {
   };
   location: string;
   message: string;
+  category: AlertCategory;
 }
 
 export function AppShell({ user, onSignOut, children }: { user: User, onSignOut: () => void, children: ReactNode }) {
@@ -76,7 +79,7 @@ export function AppShell({ user, onSignOut, children }: { user: User, onSignOut:
          {children}
       </main>
 
-      <SosModal user={user} />
+      {user && <SosModal user={user} />}
       <BottomNavBar />
     </div>
   );

@@ -21,7 +21,7 @@ import type { SosAlert } from "@/components/AppShell";
 function DashboardContent({ alerts }: { alerts: SosAlert[] }) {
   return (
     <div className="space-y-6">
-      <Card className="border-destructive/50 bg-destructive/10">
+      <Card>
         <CardHeader>
           <CardTitle className="text-destructive">Alerta Activa</CardTitle>
         </CardHeader>
@@ -31,7 +31,7 @@ function DashboardContent({ alerts }: { alerts: SosAlert[] }) {
               <AlertCard key={alert.id} alert={alert} />
             ))
           ) : (
-            <p className="text-sm text-center text-destructive/80">No hay alertas activas en este momento.</p>
+            <p className="text-sm text-center text-muted-foreground">No hay alertas activas en este momento.</p>
           )}
         </CardContent>
       </Card>
@@ -67,6 +67,13 @@ export default function Home() {
     }
   }, [user, isUserLoading, router]);
 
+  const handleSignOut = async () => {
+    if (auth) {
+      await auth.signOut();
+      router.push("/login");
+    }
+  };
+
   if (isUserLoading || !user) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
@@ -77,12 +84,6 @@ export default function Home() {
     );
   }
 
-  const handleSignOut = async () => {
-    if (auth) {
-      await auth.signOut();
-      router.push("/login");
-    }
-  };
 
   return (
     <AppShell user={user} onSignOut={handleSignOut}>
