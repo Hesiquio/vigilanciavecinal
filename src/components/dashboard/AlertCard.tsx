@@ -7,21 +7,14 @@ import { MapPin, Phone, MessageCircle } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import GoogleMap from "./GoogleMap";
 
 type AlertCardProps = {
   alert: SosAlert;
 };
 
 export function AlertCard({ alert }: AlertCardProps) {
-  const OpenStreetMap = useMemo(
-    () =>
-      dynamic(() => import("./OpenStreetMap"), {
-        loading: () => <Skeleton className="h-full w-full" />,
-        ssr: false,
-      }),
-    []
-  );
-
+  
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-4">
@@ -42,7 +35,7 @@ export function AlertCard({ alert }: AlertCardProps) {
         </div>
       </div>
       <div className="relative h-48 w-full rounded-lg overflow-hidden">
-        <OpenStreetMap />
+        <GoogleMap />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Button variant="outline">
