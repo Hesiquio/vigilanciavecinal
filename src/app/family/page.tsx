@@ -115,17 +115,22 @@ const FamilyChat = ({ user, firestore }: { user: any, firestore: any }) => {
                     <div className="flex-1 space-y-4 p-4 overflow-y-auto">
                         {isLoading && <p className="text-center">Cargando mensajes...</p>}
                         {!isLoading && messages && messages.map((msg) => (
-                            <div key={msg.id} className={cn("flex items-end gap-2", msg.userId === user.uid ? "justify-end" : "justify-start")}>
+                            <div key={msg.id} className={cn("flex items-start gap-2", msg.userId === user.uid ? "justify-end" : "justify-start")}>
                                 {msg.userId !== 'system' && msg.userId !== user.uid && <Avatar className="h-8 w-8"><AvatarImage src={msg.userAvatarUrl} /><AvatarFallback>{msg.userName?.charAt(0)}</AvatarFallback></Avatar>}
+                                <div className={cn("flex flex-col gap-1", msg.userId === user.uid ? "items-end" : "items-start")}>
                                 {msg.userId === 'system' ? (
                                     <div className="w-full text-center text-xs text-muted-foreground italic my-2">
                                         <p>{msg.text.split('\n').map((line, i) => <span key={i}>{line}<br/></span>)}</p>
                                     </div>
                                 ) : (
-                                    <div className={cn("max-w-xs rounded-lg p-3", msg.userId === user.uid ? "bg-primary text-primary-foreground" : "bg-secondary")}>
-                                        <p className="text-sm">{msg.text}</p>
-                                    </div>
+                                    <>
+                                        {msg.userId !== user.uid && <p className="text-xs text-muted-foreground px-2">{msg.userName}</p>}
+                                        <div className={cn("max-w-xs rounded-lg p-3", msg.userId === user.uid ? "bg-primary text-primary-foreground" : "bg-secondary")}>
+                                            <p className="text-sm">{msg.text}</p>
+                                        </div>
+                                    </>
                                 )}
+                                </div>
                                 {msg.userId !== 'system' && msg.userId === user.uid && <Avatar className="h-8 w-8"><AvatarImage src={user.photoURL || undefined} /><AvatarFallback>TÚ</AvatarFallback></Avatar>}
                             </div>
                         ))}
@@ -319,3 +324,5 @@ export default function FamilyPage() {
     </AppShell>
   );
 }
+
+    
