@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Users, ChevronRight, MessagesSquare as MessagesSquareIcon } from "lucide-react";
+import { Users, Shield, ChevronRight } from "lucide-react";
 
 
 export default function ChatSelectionPage() {
@@ -50,11 +50,11 @@ export default function ChatSelectionPage() {
                 <CardDescription>Selecciona un canal para empezar a comunicarte.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <Link href="/neighborhood-chat" passHref>
+                <Link href="/neighborhood" passHref>
                     <Button variant="outline" className="w-full justify-between h-20 p-4">
                         <div className="flex items-center gap-4">
                              <div className="bg-secondary p-3 rounded-lg">
-                                <MessageSquare className="h-6 w-6 text-secondary-foreground" />
+                                <Shield className="h-6 w-6 text-secondary-foreground" />
                             </div>
                             <div>
                                 <p className="text-base font-semibold">Chat Vecinal</p>
@@ -64,15 +64,15 @@ export default function ChatSelectionPage() {
                         <ChevronRight className="h-5 w-5 text-muted-foreground" />
                     </Button>
                 </Link>
-                 <Link href="/group-chat" passHref>
+                 <Link href="/family" passHref>
                     <Button variant="outline" className="w-full justify-between h-20 p-4">
                         <div className="flex items-center gap-4">
                             <div className="bg-secondary p-3 rounded-lg">
-                                <MessagesSquareIcon className="h-6 w-6 text-secondary-foreground" />
+                                <Users className="h-6 w-6 text-secondary-foreground" />
                             </div>
                             <div>
-                                <p className="text-base font-semibold">Chat Grupal</p>
-                                <p className="text-sm text-muted-foreground">Comunícate con tus grupos personalizados.</p>
+                                <p className="text-base font-semibold">Chat Familiar</p>
+                                <p className="text-sm text-muted-foreground">Comunícate con tus familiares.</p>
                             </div>
                         </div>
                         <ChevronRight className="h-5 w-5 text-muted-foreground" />
