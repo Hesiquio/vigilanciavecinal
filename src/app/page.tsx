@@ -28,11 +28,11 @@ function DashboardContent({ alerts }: { alerts: SosAlert[] }) {
         </CardHeader>
         <CardContent>
           {alerts && alerts.length > 0 ? (
-            alerts.map((alert) => (
-              <AlertCard key={alert.id} alert={alert} />
-            ))
+            // In a real app, you would query the user's specific alert feed.
+            // For now, we show the latest global alert as a placeholder.
+            <AlertCard alert={alerts[0]} />
           ) : (
-            <p className="text-sm text-center text-muted-foreground">No hay alertas activas en este momento.</p>
+            <p className="text-sm text-center text-muted-foreground">No hay alertas activas en tu red.</p>
           )}
         </CardContent>
       </Card>
@@ -47,6 +47,9 @@ export default function Home() {
   const { user, isUserLoading, auth, firestore } = useFirebase();
   const router = useRouter();
 
+  // This query should eventually point to the user-specific alert feed:
+  // `users/${user.uid}/alert-feed`
+  // For now, we are querying the global collection as a placeholder.
   const alertsQuery = useMemoFirebase(
     () => {
       if (!firestore) return null;
@@ -113,3 +116,5 @@ export default function Home() {
     </AppShell>
   );
 }
+
+    

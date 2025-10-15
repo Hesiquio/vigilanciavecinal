@@ -141,9 +141,13 @@
       "schema": { "$ref": "#/backend/entities/FamilyMember" },
       "description": "Subcollection storing the family members of a user."
     },
+    "/users/{userId}/alert-feed/{alertId}": {
+      "schema": { "$ref": "#/backend/entities/SosAlert" },
+      "description": "A personalized feed of alerts relevant to the user (from family, neighbors, etc.). This is populated by backend logic."
+    },
     "/sos-alerts/{alertId}": {
       "schema": { "$ref": "#/backend/entities/SosAlert" },
-      "description": "Stores all SOS alerts. Writable by any authenticated user, readable by any authenticated user."
+      "description": "Stores all SOS alerts. Writable by any authenticated user. This collection is processed by backend logic to populate user feeds."
     },
     "/surveillance-zones/{zoneId}": {
       "schema": { "$ref": "#/backend/entities/SurveillanceZone" },
@@ -159,3 +163,5 @@
     }
   }
 }
+
+    
