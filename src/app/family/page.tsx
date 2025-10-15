@@ -10,12 +10,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy } from "firebase/firestore";
+import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy, limit } from "firebase/firestore";
 import { doc } from "firebase/firestore";
 import type { FamilyMember, UserProfile, ChatMessage } from "@/types";
 import { Loader, UserPlus, Check, Send, AlertCircle } from "lucide-react";
 import GoogleMap from "@/components/dashboard/GoogleMap";
 import { cn } from "@/lib/utils";
+import { AlertCard } from "@/components/dashboard/AlertCard";
+import type { SosAlert } from "@/components/AppShell";
 
 const parseLocation = (locationStr: string): { lat: number; lng: number } | null => {
     if (!locationStr) return null;
@@ -167,6 +169,20 @@ export default function FamilyPage() {
   );
   const { data: userProfiles } = useCollection<UserProfile>(userProfileQuery);
 
+  const acceptedFamilyMembers = familyMembers?.filter(m => m.status === 'accepted') || [];
+  const acceptedMemberIds = acceptedFamilyMembers.map(m => m.userId);
+
+  const familyAlertsQuery = useMemoFirebase(() => {
+    if (!firestore || acceptedMemberIds.length === 0) return null;
+    return query(
+        collection(firestore, "sos-alerts"), 
+        where('userId', 'in', acceptedMemberIds),
+        orderBy("timestamp", "desc"),
+        limit(1)
+    );
+  }, [firestore, acceptedMemberIds]);
+  const { data: familyAlerts, isLoading: isLoadingAlerts } = useCollection<SosAlert>(familyAlertsQuery);
+
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -214,9 +230,6 @@ export default function FamilyPage() {
     }
   };
 
-  const acceptedFamilyMembers = familyMembers?.filter(m => m.status === 'accepted') || [];
-  const acceptedMemberIds = acceptedFamilyMembers.map(m => m.userId);
-  
   const familyLocations = userProfiles
     ?.filter(p => acceptedMemberIds.includes(p.id) && p.location)
     .map(p => parseLocation(p.location!))
@@ -241,9 +254,20 @@ export default function FamilyPage() {
                     <CardTitle>Alertas Familiares</CardTitle>
                     <CardDescription>Alertas recientes enviadas por tus familiares.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4 text-center text-sm text-muted-foreground">
-                    <AlertCircle className="mx-auto h-8 w-8"/>
-                    <p>La funcionalidad de alertas familiares está en construcción.</p>
+                <CardContent>
+                    {isLoadingAlerts ? (
+                         <div className="flex flex-col items-center justify-center p-6 text-sm text-muted-foreground">
+                            <Loader className="h-6 w-6 animate-spin"/>
+                            <p className="mt-2">Cargando alertas...</p>
+                        </div>
+                    ) : familyAlerts && familyAlerts.length > 0 ? (
+                        <AlertCard alert={familyAlerts[0]} />
+                    ) : (
+                         <div className="flex flex-col items-center justify-center p-6 text-sm text-muted-foreground">
+                            <AlertCircle className="mx-auto h-8 w-8"/>
+                            <p className="mt-2">No hay alertas familiares recientes.</p>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
