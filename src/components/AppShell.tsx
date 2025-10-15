@@ -1,11 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { BottomNav } from "./BottomNav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { currentUser } from "@/lib/data";
 import { SosModal } from "./SosModal";
-import { Bell } from "lucide-react";
+import { Bell, Settings } from "lucide-react";
+import Link from "next/link";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -30,6 +30,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <div className="flex items-center gap-4">
           <Bell className="h-6 w-6 text-muted-foreground" />
+          <Link href="/settings">
+            <Settings className="h-6 w-6 text-muted-foreground" />
+          </Link>
           <Avatar className="h-8 w-8">
             <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
             <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
@@ -42,7 +45,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       <SosModal />
-      <BottomNav />
     </div>
   );
 }
