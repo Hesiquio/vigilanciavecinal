@@ -36,6 +36,7 @@ function DashboardContent({ alerts }: { alerts: SosAlert[] }) {
           )}
         </CardContent>
       </Card>
+      <RecentActivity />
     </div>
   );
 }
