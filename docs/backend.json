@@ -160,8 +160,10 @@
     "/neighborhood-chats/{postalCode}/messages/{messageId}": {
         "schema": { "$ref": "#/backend/entities/ChatMessage" },
         "description": "Messages within a specific neighborhood chat, grouped by postal code."
+    },
+    "/group-chats/{groupId}/messages/{messageId}": {
+        "schema": { "$ref": "#/backend/entities/ChatMessage" },
+        "description": "Messages within a specific manually-created group chat."
     }
   }
 }
-
-    
