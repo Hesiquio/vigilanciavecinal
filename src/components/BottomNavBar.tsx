@@ -3,13 +3,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, MessageSquare, Map, User } from "lucide-react";
+import { Home, MessageSquare, Users, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Grupo", icon: Home },
   { href: "/chat", label: "Chats", icon: MessageSquare },
-  { href: "/family-map", label: "Familia", icon: Map },
+  { href: "/family", label: "Familia", icon: Users },
   { href: "/settings", label: "Perfil", icon: User },
 ];
 
@@ -20,8 +20,9 @@ export function BottomNavBar() {
     <div className="fixed bottom-0 left-0 right-0 z-10 border-t bg-background/95 backdrop-blur-sm md:hidden">
       <nav className="grid h-16 grid-cols-4 items-center">
         {navItems.map((item) => {
-          // Special handling for /chat route to match sub-routes
+          // Special handling for /chat or /family route to match sub-routes
           const isActive = (item.href === "/chat" && pathname.includes("/chat")) || 
+                           (item.href === "/family" && pathname.includes("/family")) ||
                            (pathname === item.href) || 
                            (item.href === '/' && (pathname.startsWith('/neighborhood-chat') || pathname.startsWith('/family-chat')) ? false : pathname === '/');
 

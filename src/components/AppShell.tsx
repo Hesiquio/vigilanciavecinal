@@ -6,7 +6,7 @@ import React from "react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SosModal } from "./SosModal";
-import { Bell, LogOut, User as UserIcon, Home, MessageSquare, Map } from "lucide-react";
+import { Bell, LogOut, User as UserIcon, Home, MessageSquare, Users } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,7 +41,7 @@ export interface SosAlert {
 const navItems = [
   { href: "/", label: "Grupo", icon: Home },
   { href: "/chat", label: "Chats", icon: MessageSquare },
-  { href: "/family-map", label: "Familia", icon: Map },
+  { href: "/family", label: "Familia", icon: Users },
 ];
 
 export function AppShell({ user, onSignOut, children }: { user: User, onSignOut: () => void, children: ReactNode }) {
