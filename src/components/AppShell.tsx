@@ -1,10 +1,11 @@
+
 "use client";
 
 import type { ReactNode } from "react";
 import React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SosModal } from "./SosModal";
-import { Bell, Settings, LogOut, Home, PanelLeft } from "lucide-react";
+import { Bell, Settings, LogOut, Home } from "lucide-react";
 import Link from "next/link";
 import {
   Card,
@@ -74,7 +75,7 @@ function DashboardContent({ alerts }: { alerts: SosAlert[] }) {
   );
 }
 
-export function AppShell({ user, onSignOut }: { user: User, onSignOut: () => void }) {
+export function AppShell({ user, onSignOut, children }: { user: User, onSignOut: () => void, children: ReactNode }) {
   const { firestore } = useFirebase();
 
   const alertsQuery = useMemoFirebase(
@@ -117,13 +118,13 @@ export function AppShell({ user, onSignOut }: { user: User, onSignOut: () => voi
           <SidebarContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton href="/" asChild>
+                <SidebarMenuButton href="/">
                   <Home />
                   Dashboard
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton href="/settings" asChild>
+                <SidebarMenuButton href="/settings">
                   <Settings />
                   Ajustes
                 </SidebarMenuButton>
@@ -157,19 +158,7 @@ export function AppShell({ user, onSignOut }: { user: User, onSignOut: () => voi
           </header>
           
           <main className="flex-1 overflow-y-auto p-4 pb-24 md:p-6">
-             <div className="mb-6">
-                <h2 className="text-2xl font-headline font-bold text-foreground">
-                  Hola, {user.displayName || user.email}
-                </h2>
-                <p className="text-muted-foreground">Bienvenido a tu red de seguridad vecinal.</p>
-              </div>
-              {isLoading ? (
-                 <div className="flex justify-center items-center h-48">
-                  <p>Cargando alertas...</p>
-                </div>
-              ) : (
-                 <DashboardContent alerts={alerts || []} />
-              )}
+             {children}
           </main>
 
           <SosModal user={user} />
@@ -178,3 +167,4 @@ export function AppShell({ user, onSignOut }: { user: User, onSignOut: () => voi
     </SidebarProvider>
   );
 }
+

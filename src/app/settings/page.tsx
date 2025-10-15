@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -11,10 +12,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import GoogleMap from "@/components/dashboard/GoogleMap";
 import { useFirebase } from "@/firebase";
 
@@ -78,8 +75,32 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex h-screen w-full flex-col bg-background">
-      <AppShell user={user} onSignOut={handleSignOut} />
-    </div>
+    <AppShell user={user} onSignOut={handleSignOut}>
+       <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Mi Zona de Vigilancia</CardTitle>
+            <CardDescription>
+              Esta es el área geográfica que cubre tu grupo de vigilancia.
+              Puedes editarla para ajustarla a tu colonia.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             {mapLoading ? (
+              <div className="h-64 flex items-center justify-center bg-muted rounded-lg">
+                <p>Cargando mapa...</p>
+              </div>
+            ) : (
+              <div className="relative h-96 w-full rounded-lg overflow-hidden">
+                <GoogleMap center={mapCenter} polygon={neighborhoodPolygon} />
+              </div>
+            )}
+            <Button>
+              Editar Zona
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </AppShell>
   );
 }
