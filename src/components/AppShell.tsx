@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import React, { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { currentUser, type SosAlert, users } from "@/lib/data";
+import { currentUser, type SosAlert } from "@/lib/data";
 import { SosModal } from "./SosModal";
 import { Bell, Settings } from "lucide-react";
 import Link from "next/link";
@@ -15,7 +15,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const handleAddAlert = (message: string, location: string) => {
     const newAlert: SosAlert = {
       id: `sos${Date.now()}`,
-      user: currentUser, // Usamos el usuario actual para la nueva alerta
+      user: currentUser,
       timestamp: "Hace un momento",
       location: location,
       message: message,
@@ -26,9 +26,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   
   // Clonamos el children y le pasamos los props que necesita
   const childrenWithProps = React.Children.map(children, child => {
-    if (React.isValidElement(child) && child.type === DashboardPage) {
-      // @ts-ignore
-      return React.cloneElement(child, { alerts });
+    // Verificamos si el hijo es un elemento de React válido.
+    // El router de Next.js puede pasar otros tipos de objetos aquí.
+    if (React.isValidElement(child)) {
+      // Comprobamos si es la página del dashboard para inyectarle las props
+      if ((child.type as any).name === 'DashboardPage' || child.type === DashboardPage) {
+        // Clonamos el elemento y le pasamos el array de alertas.
+        return React.cloneElement(child as React.ReactElement<any>, { alerts });
+      }
     }
     return child;
   });
