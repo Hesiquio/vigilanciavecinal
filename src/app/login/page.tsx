@@ -16,21 +16,11 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // This effect handles the case where the user is already logged in
-    // and lands on the login page. It will redirect them.
-    if (!isUserLoading && user && firestore) {
-        const checkUserProfile = async () => {
-            const userDocRef = doc(firestore, "users", user.uid);
-            const userDocSnap = await getDoc(userDocRef);
-            if (userDocSnap.exists() && userDocSnap.data()?.postalCode) {
-                router.push("/");
-            } else {
-                router.push("/settings");
-            }
-        }
-        checkUserProfile();
+    // Redirect logged-in users to the welcome page for profile check/completion
+    if (!isUserLoading && user) {
+        router.push("/welcome");
     }
-  }, [user, isUserLoading, router, firestore]);
+  }, [user, isUserLoading, router]);
 
   const handleSignIn = async () => {
     if (auth && firestore) {
@@ -41,13 +31,7 @@ export default function LoginPage() {
         const userDocRef = doc(firestore, "users", signedInUser.uid);
         const userDocSnap = await getDoc(userDocRef);
 
-        if (userDocSnap.exists() && userDocSnap.data()?.postalCode) {
-          // User profile is complete, go to dashboard
-          router.push("/");
-        } else {
-          // New user or incomplete profile, go to settings to complete it
-          if (!userDocSnap.exists()) {
-             // Create a basic profile if it doesn't exist
+        if (!userDocSnap.exists()) {
             const newUserProfile: UserProfile = {
               name: signedInUser.displayName || "",
               email: signedInUser.email || "",
@@ -55,9 +39,9 @@ export default function LoginPage() {
               postalCode: "",
             };
             await setDoc(userDocRef, newUserProfile, { merge: true });
-          }
-          router.push("/settings");
         }
+        // Always redirect to welcome page after login
+        router.push("/welcome");
       } catch (error) {
         console.error("Error during sign-in or profile check:", error);
       }

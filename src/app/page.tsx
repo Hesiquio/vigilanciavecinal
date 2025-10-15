@@ -16,6 +16,7 @@ import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy, limit } from "firebase/firestore";
 import type { SosAlert } from "@/components/AppShell";
+import { doc, getDoc } from "firebase/firestore";
 
 
 function DashboardContent({ alerts }: { alerts: SosAlert[] }) {
@@ -64,8 +65,17 @@ export default function Home() {
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push("/login");
+    } else if (!isUserLoading && user && firestore) {
+        const checkUserProfile = async () => {
+            const userDocRef = doc(firestore, "users", user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            if (!userDocSnap.exists() || !userDocSnap.data()?.postalCode) {
+                router.push("/welcome");
+            }
+        }
+        checkUserProfile();
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, firestore]);
 
   const handleSignOut = async () => {
     if (auth) {
