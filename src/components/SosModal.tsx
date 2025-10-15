@@ -13,10 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Siren, Mic, Video, MapPin, Send, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "./ui/input";
 
 export function SosModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const [location, setLocation] = useState("Parque Central");
   const { toast } = useToast();
 
   const handleSendSos = () => {
@@ -29,7 +31,7 @@ export function SosModal() {
         return;
     }
     
-    console.log("SOS Enviado:", { message });
+    console.log("SOS Enviado:", { message, location });
     toast({
         title: "¡Alerta de Auxilio Enviada!",
         description: "Tu grupo ha sido notificado y tu ubicación compartida.",
@@ -43,7 +45,7 @@ export function SosModal() {
       <Button
         onClick={() => setIsOpen(true)}
         variant="destructive"
-        className="fixed bottom-20 right-4 z-20 h-16 w-16 rounded-full shadow-2xl animate-pulse"
+        className="fixed bottom-6 right-6 z-20 h-16 w-16 rounded-full shadow-2xl animate-pulse"
         aria-label="Enviar Alerta de Auxilio"
       >
         <Siren className="h-8 w-8" />
@@ -61,9 +63,14 @@ export function SosModal() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="h-4 w-4 text-primary" />
-              <span>Compartiendo ubicación: Parque Central</span>
+            <div className="relative">
+                <MapPin className="absolute top-3 left-3 h-4 w-4 text-primary" />
+                <Input 
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Escribe la ubicación..."
+                    className="pl-9"
+                />
             </div>
             <div className="relative">
               <Textarea
