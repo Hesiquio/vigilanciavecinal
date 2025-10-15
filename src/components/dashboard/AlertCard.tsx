@@ -1,8 +1,8 @@
-import Image from "next/image";
 import type { SosAlert } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { MapPin, Phone, MessageCircle } from "lucide-react";
+import { OpenStreetMap } from "./OpenStreetMap";
 
 type AlertCardProps = {
   alert: SosAlert;
@@ -28,15 +28,8 @@ export function AlertCard({ alert }: AlertCardProps) {
           </div>
         </div>
       </div>
-      <div className="relative h-40 w-full rounded-lg overflow-hidden">
-        <Image 
-          src="https://picsum.photos/seed/map1/600/400" 
-          alt="Map location of alert"
-          fill
-          style={{ objectFit: 'cover' }}
-          data-ai-hint="street map"
-        />
-        <div className="absolute inset-0 bg-black/20"></div>
+      <div className="relative h-48 w-full rounded-lg overflow-hidden">
+        <OpenStreetMap />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Button variant="outline">
