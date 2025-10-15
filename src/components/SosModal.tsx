@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,8 +18,34 @@ import { Input } from "./ui/input";
 export function SosModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
-  const [location, setLocation] = useState("Parque Central");
+  const [location, setLocation] = useState("Ubicación no disponible");
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (isOpen) {
+      setLocation("Obteniendo ubicación...");
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            // For simplicity, we'll just show the coordinates.
+            // A production app would use a geocoding service to get an address.
+            setLocation(`Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}`);
+          },
+          () => {
+            setLocation("No se pudo obtener la ubicación.");
+            toast({
+                title: "Error de Ubicación",
+                description: "No se pudo obtener la ubicación. Por favor, ingrésala manualmente.",
+                variant: "destructive"
+            })
+          }
+        );
+      } else {
+        setLocation("Geolocalización no soportada.");
+      }
+    }
+  }, [isOpen, toast]);
 
   const handleSendSos = () => {
     if (message.trim() === "") {
@@ -56,7 +82,7 @@ export function SosModal() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-headline text-destructive">
               <Siren className="h-6 w-6" />
-              Confirmar Alerta de Auxilio
+              Agregar Alerta
             </DialogTitle>
             <DialogDescription>
               Tu ubicación actual será compartida con tu grupo. Describe la emergencia para validarla.
