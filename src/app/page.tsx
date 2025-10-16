@@ -3,60 +3,16 @@
 
 import { useFirebase } from "@/firebase";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { AlertCard } from "@/components/dashboard/AlertCard";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
-import { useCollection, useDoc, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy, limit, where, doc } from "firebase/firestore";
-import type { SosAlert } from "@/components/AppShell";
+import { useDoc, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
 import type { UserProfile } from "@/types";
 
-
-const placeholderAlert: SosAlert = {
-    id: "placeholder-1",
-    userId: "system-user",
-    userName: "Carlos Rodriguez",
-    userAvatarUrl: "https://picsum.photos/seed/2/100/100",
-    timestamp: {
-        seconds: Math.floor(Date.now() / 1000) - 600, // 10 minutes ago
-        nanoseconds: 0
-    },
-    location: "Lat: 19.4326, Lon: -99.1332",
-    message: "Se reporta actividad sospechosa en la Calle Falsa 123. Un individuo con sudadera oscura merodeando los coches.",
-    category: "Personas Sospechosas",
-    status: "active",
-    audience: [],
-};
-
-
-function DashboardContent({ alerts, isLoading }: { alerts: SosAlert[], isLoading: boolean }) {
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-48">
-        <p>Cargando alertas...</p>
-      </div>
-    );
-  }
-  
-  const displayAlert = alerts && alerts.length > 0 ? alerts[0] : placeholderAlert;
-  
+function DashboardContent() {
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-destructive">Alerta Activa</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <AlertCard alert={displayAlert} />
-        </CardContent>
-      </Card>
       <RecentActivity />
     </div>
   );
@@ -72,21 +28,6 @@ export default function Home() {
     [user, firestore]
   );
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
-
-  const alertsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) {
-      return null;
-    }
-    return query(
-      collection(firestore, "users", user.uid, "alert-feed"),
-      where("status", "==", "active"),
-      orderBy("timestamp", "desc"),
-      limit(1)
-    );
-  }, [firestore, user]);
-  
-  const { data: alerts, isLoading: areAlertsLoading } = useCollection<SosAlert>(alertsQuery);
-
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -105,10 +46,9 @@ export default function Home() {
     }
   };
   
-  const isLoading = isUserLoading || isProfileLoading || (alertsQuery !== null && areAlertsLoading);
+  const isLoading = isUserLoading || isProfileLoading;
 
-
-  if (isUserLoading || !user) {
+  if (isLoading || !user) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
         <div className="text-center">
@@ -118,7 +58,6 @@ export default function Home() {
     );
   }
 
-
   return (
     <AppShell user={user} onSignOut={handleSignOut}>
        <div className="mb-6">
@@ -127,8 +66,7 @@ export default function Home() {
           </h2>
           <p className="text-muted-foreground">Bienvenido a tu red de seguridad vecinal.</p>
         </div>
-        <DashboardContent alerts={alerts || []} isLoading={isLoading} />
+        <DashboardContent />
     </AppShell>
   );
 }
-
