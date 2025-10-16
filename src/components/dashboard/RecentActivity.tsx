@@ -41,6 +41,7 @@ export function RecentActivity() {
     const typedAvisos: ActivityItem[] = avisos ? avisos.map(a => ({ ...a, type: 'aviso' })) : [];
 
     return [...typedAlerts, ...typedAvisos]
+      .filter(item => item.timestamp) // Ensure timestamp is not null
       .sort((a, b) => b.timestamp.seconds - a.timestamp.seconds)
       .slice(0, 5); // Take the most recent 5 items overall
   }, [alerts, avisos]);
