@@ -213,6 +213,10 @@
       "schema": { "$ref": "#/backend/entities/UserProfile" },
       "description": "Stores public user profiles. Writable by the user themselves."
     },
+    "/users/{userId}/alert-feed/{alertId}": {
+      "schema": { "$ref": "#/backend/entities/SosAlert" },
+      "description": "A personalized feed of alerts relevant to the user (from family, neighbors, etc.). This is populated by backend logic."
+    },
     "/users/{userId}/familyMembers/{memberId}": {
       "schema": { "$ref": "#/backend/entities/FamilyMember" },
       "description": "Subcollection storing the family members of a user."

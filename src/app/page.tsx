@@ -3,7 +3,7 @@
 
 import { useFirebase } from "@/firebase";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { AppShell } from "@/components/AppShell";
 import {
   Card,
