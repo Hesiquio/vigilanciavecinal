@@ -18,7 +18,12 @@ import { doc } from "firebase/firestore";
 import type { GroupMember, UserProfile, ChatMessage, Group } from "@/types";
 import { Loader, UserPlus, Check, Send, AlertCircle, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import MapWrapper from "@/components/dashboard/GoogleMap";
+import dynamic from 'next/dynamic';
+
+const LeafletMapComponent = dynamic(() => import('@/components/dashboard/LeafletMapComponent'), {
+    ssr: false,
+    loading: () => <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center"><p>Cargando mapa...</p></div>,
+});
 
 const parseLocation = (locationStr: string): { lat: number; lng: number } | null => {
     if (!locationStr) return null;
@@ -268,7 +273,7 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
                 </CardHeader>
                 <CardContent>
                     <div className="relative h-64 w-full rounded-lg overflow-hidden mb-4">
-                        <MapWrapper markers={memberLocations} />
+                        <LeafletMapComponent markers={memberLocations} />
                     </div>
                      <div className="flex items-center space-x-2">
                         <Switch 

@@ -4,12 +4,17 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { MapPin, Phone, MessageCircle, ShieldAlert, Siren, CloudSunRain, UserX } from "lucide-react";
-import MapWrapper from "./GoogleMap";
 import type { SosAlert, AlertCategory } from "../AppShell";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
 import React from "react";
+import dynamic from 'next/dynamic';
+
+const LeafletMapComponent = dynamic(() => import('@/components/dashboard/LeafletMapComponent'), {
+    ssr: false,
+    loading: () => <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center"><p>Cargando mapa...</p></div>,
+});
 
 
 type AlertCardProps = {
@@ -79,7 +84,7 @@ export function AlertCard({ alert }: AlertCardProps) {
         </div>
       </div>
       <div className="relative h-48 w-full rounded-lg overflow-hidden">
-        <MapWrapper markerPosition={markerPosition ?? undefined} />
+        <LeafletMapComponent markerPosition={markerPosition ?? undefined} />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Button variant="outline">

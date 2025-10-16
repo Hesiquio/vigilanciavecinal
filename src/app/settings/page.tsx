@@ -14,12 +14,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import MapWrapper from "@/components/dashboard/GoogleMap";
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { UserProfile } from "@/types";
 import { Loader, MapPin } from "lucide-react";
+import dynamic from 'next/dynamic';
+
+const LeafletMapComponent = dynamic(() => import('@/components/dashboard/LeafletMapComponent'), {
+    ssr: false,
+    loading: () => <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center"><p>Cargando mapa...</p></div>,
+});
 
 
 export default function SettingsPage() {
@@ -196,7 +201,7 @@ export default function SettingsPage() {
               </div>
             ) : (
               <div className="relative h-96 w-full rounded-lg overflow-hidden">
-                <MapWrapper center={mapCenter} markerPosition={mapCenter} />
+                <LeafletMapComponent center={mapCenter} markerPosition={mapCenter} />
               </div>
             )}
             <Button disabled>

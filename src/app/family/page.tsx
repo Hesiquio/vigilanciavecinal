@@ -14,10 +14,16 @@ import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp,
 import { doc } from "firebase/firestore";
 import type { FamilyMember, UserProfile, ChatMessage } from "@/types";
 import { Loader, UserPlus, Check, Send, AlertCircle } from "lucide-react";
-import MapWrapper from "@/components/dashboard/GoogleMap";
 import { cn } from "@/lib/utils";
 import { AlertCard } from "@/components/dashboard/AlertCard";
 import type { SosAlert } from "@/components/AppShell";
+import dynamic from 'next/dynamic';
+
+const LeafletMapComponent = dynamic(() => import('@/components/dashboard/LeafletMapComponent'), {
+    ssr: false,
+    loading: () => <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center"><p>Cargando mapa...</p></div>,
+});
+
 
 const parseLocation = (locationStr: string): { lat: number; lng: number } | null => {
     if (!locationStr) return null;
@@ -280,7 +286,7 @@ export default function FamilyPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="relative h-64 w-full rounded-lg overflow-hidden">
-                        <MapWrapper markers={familyLocations} />
+                        <LeafletMapComponent markers={familyLocations} />
                     </div>
                 </CardContent>
             </Card>
