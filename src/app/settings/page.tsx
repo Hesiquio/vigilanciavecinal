@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import GoogleMapWrapper from "@/components/dashboard/GoogleMap";
+import MapWrapper from "@/components/dashboard/GoogleMap";
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
@@ -114,7 +114,7 @@ export default function SettingsPage() {
           return { lat, lng };
         }
       }
-      return { lat: 19.4326, lng: -99.1332 };
+      return null; // Return null if parsing fails
   }
 
   const handleProfileSave = async () => {
@@ -191,12 +191,12 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
              {mapLoading ? (
-              <div className="h-64 flex items-center justify-center bg-muted rounded-lg">
+              <div className="h-96 flex items-center justify-center bg-muted rounded-lg">
                 <p>Cargando mapa...</p>
               </div>
             ) : (
               <div className="relative h-96 w-full rounded-lg overflow-hidden">
-                <GoogleMapWrapper center={mapCenter} markerPosition={mapCenter} />
+                <MapWrapper center={mapCenter} markerPosition={mapCenter} />
               </div>
             )}
             <Button disabled>

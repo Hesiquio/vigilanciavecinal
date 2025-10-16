@@ -1,10 +1,22 @@
 
 "use client";
 
-import { APIProvider, Map, AdvancedMarker, useMap, MapCameraProps } from "@vis.gl/react-google-maps";
-import { useEffect, useState } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import { useEffect } from 'react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { MapPin } from "lucide-react";
+
+// Fix for default icon not showing in Leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
+
 
 type MapProps = {
   center?: { lat: number; lng: number };
@@ -13,103 +25,74 @@ type MapProps = {
   polygon?: { lat: number, lng: number }[];
 };
 
-// This is the actual client component that renders the map.
-// It receives the apiKey as a prop.
-function GoogleMapClient({ 
-  apiKey, 
-  center, 
-  markerPosition, 
-  markers, 
-  polygon 
-}: MapProps & { apiKey: string }) {
+const MapUpdater = ({ center, markers, polygon, markerPosition }: MapProps) => {
+    const map = useMap();
+    useEffect(() => {
+        const targetCenter = center || polygon?.[0] || markers?.[0] || markerPosition;
+        if (targetCenter) {
+             map.setView([targetCenter.lat, targetCenter.lng], 15);
+        }
+        if (polygon && polygon.length > 0) {
+            const bounds = L.latLngBounds(polygon.map(p => [p.lat, p.lng]));
+            map.fitBounds(bounds);
+        }
 
-  const defaultCenter = { lat: 19.4326, lng: -99.1332 }; // Mexico City
-  const [mapCenter, setMapCenter] = useState(center || polygon?.[0] || markers?.[0] || markerPosition || defaultCenter);
-  
-  const cameraProps: MapCameraProps = {
-    center: mapCenter,
-    zoom: 15,
-  }
-
-  if (!apiKey) {
-    return <MissingApiKeyCard />;
-  }
-
-  return (
-    <APIProvider apiKey={apiKey}>
-      <Map
-        {...cameraProps}
-        gestureHandling={"greedy"}
-        disableDefaultUI={true}
-        mapId="b1b2f2c2a3e4f5a6"
-        className="w-full h-full"
-      >
-        {markerPosition && <AdvancedMarker position={markerPosition} />}
-        {markers && markers.map((pos, i) => <AdvancedMarker key={i} position={pos} />)}
-        {polygon && <MapWithPolygon polygon={polygon} />}
-      </Map>
-    </APIProvider>
-  );
+    }, [center, markers, polygon, markerPosition, map]);
+    return null;
 }
 
+const LeafletMap = ({ center, markerPosition, markers, polygon }: MapProps) => {
+    const defaultCenter: [number, number] = [19.4326, -99.1332]; // Mexico City
+    const displayCenter = center ? [center.lat, center.lng] : (polygon?.[0] ? [polygon[0].lat, polygon[0].lng] : (markers?.[0] ? [markers[0].lat, markers[0].lng] : (markerPosition ? [markerPosition.lat, markerPosition.lng] : defaultCenter)));
+    
+    return (
+        <MapContainer center={displayCenter} zoom={15} style={{ height: '100%', width: '100%' }}>
+            <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            />
+            {markerPosition && <Marker position={[markerPosition.lat, markerPosition.lng]} />}
+            {markers?.map((pos, i) => <Marker key={i} position={[pos.lat, pos.lng]} />)}
+            {polygon && polygon.length > 0 && (
+                 <Polygon pathOptions={{ color: 'hsl(var(--primary))' }} positions={polygon.map(p => [p.lat, p.lng])} />
+            )}
+            <MapUpdater center={center} markers={markers} polygon={polygon} markerPosition={markerPosition} />
+        </MapContainer>
+    );
+};
 
-// --- Helper components ---
-
-const MapWithPolygon = ({ polygon }: { polygon?: { lat: number, lng: number }[]}) => {
-  const map = useMap();
-
-  useEffect(() => {
-    if (map && polygon && polygon.length > 0) {
-      const polygonPath = new google.maps.Polygon({
-        paths: polygon,
-        strokeColor: "hsl(var(--primary))",
-        strokeOpacity: 0.8,
-        strokeWeight: 2,
-        fillColor: "hsl(var(--primary))",
-        fillOpacity: 0.35,
-      });
-      polygonPath.setMap(map);
-      
-      const bounds = new google.maps.LatLngBounds();
-      polygon.forEach(point => bounds.extend(point));
-      map.fitBounds(bounds);
-
-      return () => {
-        polygonPath.setMap(null);
-      }
-    }
-  }, [map, polygon]);
-
-  return null;
-}
-
-const MissingApiKeyCard = () => (
+const MissingLocationCard = () => (
     <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center p-4">
-        <Alert variant="destructive" className="max-w-md">
+        <Alert>
             <MapPin className="h-4 w-4" />
-            <AlertTitle>Error: Fallo de Autenticación del Mapa</AlertTitle>
+            <AlertTitle>Ubicación no disponible</AlertTitle>
             <AlertDescription>
-                La clave de API de Google Maps no es válida, está mal configurada o faltan permisos.
-                <ul className="list-disc pl-5 mt-2 text-xs">
-                    <li><b>Verifica la Clave:</b> Asegúrate de que la clave en tu archivo <code>.env</code> para <code>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> sea correcta.</li>
-                    <li><b>API Habilitada:</b> Confirma que la "Maps JavaScript API" esté habilitada en tu proyecto de Google Cloud.</li>
-                    <li><b>Restricciones HTTP (Causa más común):</b> Revisa que las "Restricciones de aplicación" (Referentes HTTP) en tu clave de API permitan el dominio donde ejecutas la app (incluyendo <code>localhost</code> para desarrollo). Este es el error más común (ApiTargetBlockedMapError).</li>
-                    <li><b>Facturación Habilitada:</b> Confirma que tu proyecto de Google Cloud tenga la facturación habilitada.</li>
-                </ul>
+                No hay una ubicación o zona para mostrar en el mapa.
             </AlertDescription>
         </Alert>
     </div>
 );
 
 
-// This is the server component wrapper that will be exported and used in the app.
-// It reads the API key from the environment and passes it to the client component.
-export default function GoogleMapWrapper(props: MapProps) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+export default function MapWrapper(props: MapProps) {
+  // A client component can't be async, so we need to wrap the dynamic import
+  // in a component that can use state and effects.
+  const [isClient, setIsClient] = useState(false);
 
-  if (!apiKey) {
-    return <MissingApiKeyCard />;
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Show a placeholder or loader while the component is not yet mounted on the client
+  if (!isClient) {
+    return <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center"><p>Cargando mapa...</p></div>;
+  }
+  
+  const hasLocation = props.center || props.markerPosition || (props.markers && props.markers.length > 0) || (props.polygon && props.polygon.length > 0);
+
+  if (!hasLocation) {
+      return <MissingLocationCard />;
   }
 
-  return <GoogleMapClient apiKey={apiKey} {...props} />;
+  return <LeafletMap {...props} />;
 }
