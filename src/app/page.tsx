@@ -16,7 +16,7 @@ import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { useCollection, useDoc, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy, limit, where, doc } from "firebase/firestore";
 import type { SosAlert } from "@/components/AppShell";
-import type { UserProfile, UserGroup } from "@/types";
+import type { UserProfile } from "@/types";
 
 
 const placeholderAlert: SosAlert = {
@@ -65,41 +65,19 @@ export default function Home() {
   );
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
 
-  const userGroupsQuery = useMemoFirebase(
-    () => (user && firestore ? collection(firestore, `users/${user.uid}/groups`) : null),
-    [user, firestore]
-  );
-  const { data: userGroups, isLoading: areGroupsLoading } = useCollection<UserGroup>(userGroupsQuery);
-
+  // Corrected Query: Point to the user's specific alert-feed subcollection.
   const alertsQuery = useMemoFirebase(() => {
-    if (!firestore || !userProfile || isProfileLoading || areGroupsLoading) {
+    if (!firestore || !user) {
       return null;
     }
-
-    const audience: string[] = ['family'];
-
-    if (userProfile.postalCode) {
-      audience.push(userProfile.postalCode);
-    }
-    
-    if (userGroups) {
-      userGroups.forEach(group => audience.push(group.id));
-    }
-    
-    // Firestore 'in' and 'array-contains-any' queries fail if the array is empty.
-    // We must ensure the audience array is not empty before creating the query.
-    if (audience.length === 0) {
-      return null; 
-    }
-
+    // This query now safely points to a subcollection the user is allowed to read.
     return query(
-      collection(firestore, "sos-alerts"),
+      collection(firestore, "users", user.uid, "alert-feed"),
       where("status", "==", "active"),
-      where("audience", "array-contains-any", audience.slice(0, 30)),
       orderBy("timestamp", "desc"),
       limit(1)
     );
-  }, [firestore, userProfile, userGroups, isProfileLoading, areGroupsLoading]);
+  }, [firestore, user]);
   
   const { data: alerts, isLoading: areAlertsLoading } = useCollection<SosAlert>(alertsQuery);
 
@@ -121,7 +99,7 @@ export default function Home() {
     }
   };
   
-  const isLoading = isUserLoading || isProfileLoading || areGroupsLoading || (alertsQuery !== null && areAlertsLoading);
+  const isLoading = isUserLoading || isProfileLoading || (alertsQuery !== null && areAlertsLoading);
 
 
   if (isUserLoading || !user) {
