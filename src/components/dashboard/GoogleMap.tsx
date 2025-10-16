@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { MapPin } from "lucide-react";
 
-type GoogleMapProps = {
+type GoogleMapClientProps = {
   apiKey: string | undefined;
   center?: { lat: number; lng: number };
   markerPosition?: { lat: number; lng: number };
@@ -44,7 +44,7 @@ const MissingApiKeyCard = () => (
             <MapPin className="h-4 w-4" />
             <AlertTitle>Error: Fallo de Autenticación del Mapa</AlertTitle>
             <AlertDescription>
-                Hay un problema con tu clave de API de Google Maps. Asegúrate de que el valor en tu archivo `.env.local` para `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` sea correcto.
+                Hay un problema con tu clave de API de Google Maps. Asegúrate de que el valor en tu archivo `.env` para `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` sea correcto.
                 <ul className="list-disc pl-5 mt-2">
                     <li>Verifica que la clave de API exista y esté copiada correctamente.</li>
                     <li>Asegúrate de que la "Maps JavaScript API" esté habilitada en tu proyecto de Google Cloud.</li>
@@ -57,7 +57,7 @@ const MissingApiKeyCard = () => (
 );
 
 
-function GoogleMap({ apiKey, center, markerPosition, markers, polygon }: GoogleMapProps) {
+function GoogleMapClient({ apiKey, center, markerPosition, markers, polygon }: GoogleMapClientProps) {
   if (!apiKey) {
     return <MissingApiKeyCard />;
   }
@@ -81,10 +81,10 @@ function GoogleMap({ apiKey, center, markerPosition, markers, polygon }: GoogleM
   );
 }
 
-// Server Component Wrapper
-const GoogleMapWrapper = (props: Omit<GoogleMapProps, 'apiKey'>) => {
+// This is a Server Component that will pass the API key to the Client Component.
+const GoogleMapWrapper = (props: Omit<GoogleMapClientProps, 'apiKey'>) => {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    return <GoogleMap apiKey={apiKey} {...props} />;
+    return <GoogleMapClient apiKey={apiKey} {...props} />;
 };
 
 export default GoogleMapWrapper;

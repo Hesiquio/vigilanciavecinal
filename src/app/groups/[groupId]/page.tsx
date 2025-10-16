@@ -22,7 +22,7 @@ import GoogleMapWrapper from "@/components/dashboard/GoogleMap";
 
 const parseLocation = (locationStr: string): { lat: number; lng: number } | null => {
     if (!locationStr) return null;
-    const match = locationStr.match(/Lat: ([-]?\d+\.\d+), Lon: ([-]?d+\.\d+)/);
+    const match = locationStr.match(/Lat: ([-]?d+\.\d+), Lon: ([-]?d+\.\d+)/);
     if (match && match.length === 3) {
         const lat = parseFloat(match[1]);
         const lng = parseFloat(match[2]);
@@ -346,5 +346,3 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
     </AppShell>
   );
 }
-
-    

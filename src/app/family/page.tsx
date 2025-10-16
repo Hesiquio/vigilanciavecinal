@@ -348,5 +348,3 @@ export default function FamilyPage() {
     </AppShell>
   );
 }
-
-    
