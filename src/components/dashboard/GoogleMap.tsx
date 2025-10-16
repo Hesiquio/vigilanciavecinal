@@ -1,4 +1,3 @@
-
 "use client";
 
 import { APIProvider, Map, AdvancedMarker, useMap } from "@vis.gl/react-google-maps";
@@ -12,6 +11,38 @@ type MapProps = {
   markers?: { lat: number; lng: number }[];
   polygon?: { lat: number, lng: number }[];
 };
+
+// This is the actual client component that renders the map.
+// It receives the apiKey as a prop.
+function GoogleMapClient({ 
+  apiKey, 
+  center, 
+  markerPosition, 
+  markers, 
+  polygon 
+}: MapProps & { apiKey: string }) {
+
+  const mapCenter = center || polygon?.[0] || markers?.[0] || markerPosition || { lat: 19.4326, lng: -99.1332 };
+
+  return (
+    <APIProvider apiKey={apiKey}>
+      <Map
+        center={mapCenter}
+        defaultZoom={15}
+        gestureHandling={"greedy"}
+        disableDefaultUI={true}
+        mapId="b1b2f2c2a3e4f5a6"
+      >
+        {markerPosition && <AdvancedMarker position={markerPosition} />}
+        {markers && markers.map((pos, i) => <AdvancedMarker key={i} position={pos} />)}
+        {polygon && <MapWithPolygon polygon={polygon} />}
+      </Map>
+    </APIProvider>
+  );
+}
+
+
+// --- Helper components ---
 
 const MapWithPolygon = ({ polygon }: { polygon?: { lat: number, lng: number }[]}) => {
   const map = useMap();
@@ -59,31 +90,15 @@ const MissingApiKeyCard = () => (
     </div>
 );
 
-function GoogleMapWrapper(props: MapProps) {
+
+// This is the server component wrapper that will be exported and used in the app.
+// It reads the API key from the environment and passes it to the client component.
+export default function GoogleMapWrapper(props: MapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   if (!apiKey) {
     return <MissingApiKeyCard />;
   }
 
-  const { center, markerPosition, markers, polygon } = props;
-  const mapCenter = center || polygon?.[0] || markers?.[0] || markerPosition || { lat: 19.4326, lng: -99.1332 };
-
-  return (
-    <APIProvider apiKey={apiKey}>
-      <Map
-        center={mapCenter}
-        defaultZoom={15}
-        gestureHandling={"greedy"}
-        disableDefaultUI={true}
-        mapId="b1b2f2c2a3e4f5a6"
-      >
-        {markerPosition && <AdvancedMarker position={markerPosition} />}
-        {markers && markers.map((pos, i) => <AdvancedMarker key={i} position={pos} />)}
-        {polygon && <MapWithPolygon polygon={polygon} />}
-      </Map>
-    </APIProvider>
-  );
+  return <GoogleMapClient apiKey={apiKey} {...props} />;
 }
-
-export default GoogleMapWrapper;
