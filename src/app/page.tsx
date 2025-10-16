@@ -35,8 +35,9 @@ export default function Home() {
     }
 
     // 3. Only after loading is complete and we have a user,
-    // we check the profile. If the profile exists but is missing the postal code, redirect.
-    // We check `userProfile !== undefined` to ensure the hook has resolved and is not in an intermediate state.
+    // we check if the profile exists and is complete.
+    // We check userProfile !== undefined to make sure the hook has resolved.
+    // If the profile is null (doesn't exist) or doesn't have a postal code, redirect.
     if (userProfile !== undefined) {
         if (userProfile === null || !userProfile.postalCode) {
             router.push("/welcome");
@@ -55,7 +56,8 @@ export default function Home() {
   
   // Display a loading screen while waiting for auth and profile data.
   // This also prevents a flash of the dashboard before a redirect decision is made.
-  if (isLoading || !user || (userProfile !== undefined && !userProfile?.postalCode)) {
+  // The logic is a bit more defensive: show loading if the final redirect check hasn't been possible yet.
+  if (isLoading || !user || (userProfile === undefined)) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
         <div className="text-center">
@@ -64,6 +66,18 @@ export default function Home() {
       </div>
     );
   }
+  
+  // A specific check to avoid rendering the dashboard if a redirect is imminent
+  if (userProfile && !userProfile.postalCode) {
+      return (
+         <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
+            <div className="text-center">
+              <p className="text-lg text-muted-foreground">Redirigiendo...</p>
+            </div>
+         </div>
+      );
+  }
+
 
   // If we reach here, the user is logged in and their profile is complete.
   return (
