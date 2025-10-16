@@ -177,7 +177,6 @@ export default function FamilyPage() {
     return query(
         collection(firestore, "sos-alerts"), 
         where('userId', 'in', acceptedMemberIds),
-        where('status', '==', 'active'),
         orderBy("timestamp", "desc"),
         limit(1)
     );

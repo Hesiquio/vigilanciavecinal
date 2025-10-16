@@ -161,7 +161,6 @@ export function SosModal({ user }: SosModalProps) {
             location,
             category,
             audience,
-            status: 'active', // Set initial status to active
             timestamp: serverTimestamp(),
         };
 

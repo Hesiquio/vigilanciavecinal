@@ -216,10 +216,6 @@
       "schema": { "$ref": "#/backend/entities/UserGroup" },
       "description": "Subcollection storing references to groups a user is a member of."
     },
-    "/users/{userId}/alert-feed/{alertId}": {
-      "schema": { "$ref": "#/backend/entities/SosAlert" },
-      "description": "A personalized feed of alerts relevant to the user (from family, neighbors, etc.). This is populated by backend logic."
-    },
     "/sos-alerts/{alertId}": {
       "schema": { "$ref": "#/backend/entities/SosAlert" },
       "description": "Stores all SOS alerts. Writable by any authenticated user. This collection is processed by backend logic to populate user feeds."
