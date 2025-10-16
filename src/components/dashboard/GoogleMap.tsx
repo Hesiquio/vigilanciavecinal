@@ -93,7 +93,7 @@ const MissingApiKeyCard = () => (
                 <ul className="list-disc pl-5 mt-2 text-xs">
                     <li><b>Verifica la Clave:</b> Asegúrate de que la clave en tu archivo <code>.env</code> para <code>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> sea correcta.</li>
                     <li><b>API Habilitada:</b> Confirma que la "Maps JavaScript API" esté habilitada en tu proyecto de Google Cloud.</li>
-                    <li><b>Restricciones HTTP:</b> Revisa que las "Restricciones de aplicación" (Referentes HTTP) en tu clave de API permitan el dominio donde ejecutas la app (incluyendo <code>localhost</code> para desarrollo). Este es el error más común (ApiTargetBlockedMapError).</li>
+                    <li><b>Restricciones HTTP (Causa más común):</b> Revisa que las "Restricciones de aplicación" (Referentes HTTP) en tu clave de API permitan el dominio donde ejecutas la app (incluyendo <code>localhost</code> para desarrollo). Este es el error más común (ApiTargetBlockedMapError).</li>
                     <li><b>Facturación Habilitada:</b> Confirma que tu proyecto de Google Cloud tenga la facturación habilitada.</li>
                 </ul>
             </AlertDescription>
