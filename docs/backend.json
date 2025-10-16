@@ -28,6 +28,10 @@
         "location": {
             "type": "string",
             "description": "The user's last known location as a string 'Lat: XX.XXXX, Lon: YY.YYYY'."
+        },
+        "verificationTimestamp": {
+            "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp",
+            "description": "The timestamp when the user last verified their zone."
         }
       },
       "required": ["name", "email"]
@@ -70,16 +74,11 @@
             "type": "string"
           }
         },
-        "status": {
-            "type": "string",
-            "enum": ["active", "resolved", "expired"],
-            "description": "The current status of the alert."
-        },
         "timestamp": {
           "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp"
         }
       },
-      "required": ["userId", "userName", "message", "location", "category", "audience", "status", "timestamp"]
+      "required": ["userId", "userName", "message", "location", "category", "audience", "timestamp"]
     },
     "Aviso": {
       "title": "Aviso",

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Loader, MapPin, CheckCircle } from "lucide-react";
 import type { UserProfile } from "@/types";
@@ -102,6 +102,7 @@ export default function WelcomePage() {
         await setDoc(userDocRef, { 
             postalCode: postalCode, 
             location: locationString,
+            verificationTimestamp: serverTimestamp(),
             // also ensure name, email, avatar are set from the auth user if not present
             name: userProfile?.name || user.displayName,
             email: userProfile?.email || user.email,

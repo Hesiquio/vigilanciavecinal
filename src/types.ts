@@ -6,6 +6,7 @@ export type UserProfile = {
   avatarUrl: string;
   postalCode?: string;
   location?: string;
+  verificationTimestamp?: any;
 };
 
 export type FamilyMember = {
