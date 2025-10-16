@@ -36,9 +36,16 @@ const placeholderAlert: SosAlert = {
 };
 
 
-function DashboardContent({ alerts }: { alerts: SosAlert[] }) {
-  // If alerts exist, use them. Otherwise, use the placeholder.
-  const displayAlerts = alerts && alerts.length > 0 ? alerts : [placeholderAlert];
+function DashboardContent({ alerts, isLoading }: { alerts: SosAlert[], isLoading: boolean }) {
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-48">
+        <p>Cargando alertas...</p>
+      </div>
+    );
+  }
+  
+  const displayAlert = alerts && alerts.length > 0 ? alerts[0] : placeholderAlert;
   
   return (
     <div className="space-y-6">
@@ -47,8 +54,7 @@ function DashboardContent({ alerts }: { alerts: SosAlert[] }) {
           <CardTitle className="text-destructive">Alerta Activa</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Always render an AlertCard, with a real alert or the placeholder */}
-          <AlertCard alert={displayAlerts[0]} />
+          <AlertCard alert={displayAlert} />
         </CardContent>
       </Card>
       <RecentActivity />
@@ -67,7 +73,6 @@ export default function Home() {
   );
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
 
-  // This query now safely points to a subcollection the user is allowed to read.
   const alertsQuery = useMemoFirebase(() => {
     if (!firestore || !user) {
       return null;
@@ -100,8 +105,6 @@ export default function Home() {
     }
   };
   
-  // The page is loading if the user session is loading, the user profile is loading,
-  // or if we have started to query for alerts but they haven't loaded yet.
   const isLoading = isUserLoading || isProfileLoading || (alertsQuery !== null && areAlertsLoading);
 
 
@@ -124,15 +127,8 @@ export default function Home() {
           </h2>
           <p className="text-muted-foreground">Bienvenido a tu red de seguridad vecinal.</p>
         </div>
-        {isLoading ? (
-            <div className="flex justify-center items-center h-48">
-            <p>Cargando alertas...</p>
-          </div>
-        ) : (
-            // Pass the alerts (which could be null or empty) to DashboardContent.
-            // DashboardContent will handle showing the placeholder if needed.
-            <DashboardContent alerts={alerts || []} />
-        )}
+        <DashboardContent alerts={alerts || []} isLoading={isLoading} />
     </AppShell>
   );
 }
+
