@@ -4,7 +4,7 @@
 
 import { useFirebase } from "@/firebase";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
 import {
   Card,
@@ -50,18 +50,19 @@ export default function Home() {
     () => (user && firestore ? doc(firestore, "users", user.uid) : null),
     [user, firestore]
   );
-  const { data: userProfile } = useDoc<UserProfile>(userDocRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
 
   // Step 2: Get user's groups
   const userGroupsQuery = useMemoFirebase(
     () => (user && firestore ? collection(firestore, `users/${user.uid}/groups`) : null),
     [user, firestore]
   );
-  const { data: userGroups } = useCollection<UserGroup>(userGroupsQuery);
+  const { data: userGroups, isLoading: areGroupsLoading } = useCollection<UserGroup>(userGroupsQuery);
 
   // Step 3: Construct audience list and query
   const alertsQuery = useMemoFirebase(() => {
-    if (!firestore || !userProfile) return null;
+    // Wait until profile and groups are loaded to build the query
+    if (!firestore || !userProfile || isProfileLoading || areGroupsLoading) return null;
 
     // Base audience is always family
     const audience: string[] = ['family'];
@@ -79,7 +80,11 @@ export default function Home() {
     // Firestore 'in' queries are limited to 30 elements.
     // If the user is in more than ~28 groups, this will fail.
     // This is a reasonable limitation for this app.
-    if (audience.length === 0) return null;
+    if (audience.length === 0) {
+      // If there's no audience, we can't query, but we know there are no alerts.
+      // We can return a query that will always be empty, but it's better to just not query.
+      return null;
+    }
 
     // Step 4: Query the global alerts collection for any active alerts
     // where the audience list contains any of the user's relevant groups.
@@ -90,25 +95,21 @@ export default function Home() {
       orderBy("timestamp", "desc"),
       limit(1)
     );
-  }, [firestore, userProfile, userGroups]);
+  }, [firestore, userProfile, userGroups, isProfileLoading, areGroupsLoading]);
   
-  const { data: alerts, isLoading } = useCollection<SosAlert>(alertsQuery);
+  const { data: alerts, isLoading: areAlertsLoading } = useCollection<SosAlert>(alertsQuery);
 
 
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push("/login");
-    } else if (!isUserLoading && user && firestore) {
-        const checkUserProfile = async () => {
-            const userDocRef = doc(firestore, "users", user.uid);
-            const userDocSnap = await getDoc(userDocRef);
-            if (!userDocSnap.exists() || !userDocSnap.data()?.postalCode) {
-                router.push("/welcome");
-            }
+    } else if (!isUserLoading && user && firestore && !isProfileLoading) {
+        // Redirect to welcome if profile is loaded but postalCode is missing
+        if (!userProfile?.postalCode) {
+            router.push("/welcome");
         }
-        checkUserProfile();
     }
-  }, [user, isUserLoading, router, firestore]);
+  }, [user, isUserLoading, router, firestore, userProfile, isProfileLoading]);
 
   const handleSignOut = async () => {
     if (auth) {
@@ -116,6 +117,10 @@ export default function Home() {
       router.push("/login");
     }
   };
+  
+  // Unified loading state
+  const isLoading = isUserLoading || isProfileLoading || areGroupsLoading || (alertsQuery !== null && areAlertsLoading);
+
 
   if (isUserLoading || !user) {
     return (
