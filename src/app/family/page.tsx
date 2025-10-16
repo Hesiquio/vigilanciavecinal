@@ -14,7 +14,7 @@ import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp,
 import { doc } from "firebase/firestore";
 import type { FamilyMember, UserProfile, ChatMessage } from "@/types";
 import { Loader, UserPlus, Check, Send, AlertCircle } from "lucide-react";
-import GoogleMap from "@/components/dashboard/GoogleMap";
+import GoogleMapWrapper from "@/components/dashboard/GoogleMap";
 import { cn } from "@/lib/utils";
 import { AlertCard } from "@/components/dashboard/AlertCard";
 import type { SosAlert } from "@/components/AppShell";
@@ -280,7 +280,7 @@ export default function FamilyPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="relative h-64 w-full rounded-lg overflow-hidden">
-                        <GoogleMap markers={familyLocations} />
+                        <GoogleMapWrapper markers={familyLocations} />
                     </div>
                 </CardContent>
             </Card>

@@ -18,11 +18,11 @@ import { doc } from "firebase/firestore";
 import type { GroupMember, UserProfile, ChatMessage, Group } from "@/types";
 import { Loader, UserPlus, Check, Send, AlertCircle, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import GoogleMap from "@/components/dashboard/GoogleMap";
+import GoogleMapWrapper from "@/components/dashboard/GoogleMap";
 
 const parseLocation = (locationStr: string): { lat: number; lng: number } | null => {
     if (!locationStr) return null;
-    const match = locationStr.match(/Lat: ([-]?\d+\.\d+), Lon: ([-]?\d+\.\d+)/);
+    const match = locationStr.match(/Lat: ([-]?\d+\.\d+), Lon: ([-]?d+\.\d+)/);
     if (match && match.length === 3) {
         const lat = parseFloat(match[1]);
         const lng = parseFloat(match[2]);
@@ -268,7 +268,7 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
                 </CardHeader>
                 <CardContent>
                     <div className="relative h-64 w-full rounded-lg overflow-hidden mb-4">
-                        <GoogleMap markers={memberLocations} />
+                        <GoogleMapWrapper markers={memberLocations} />
                     </div>
                      <div className="flex items-center space-x-2">
                         <Switch 

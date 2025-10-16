@@ -7,12 +7,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { MapPin } from "lucide-react";
 
 type GoogleMapProps = {
+  apiKey: string | undefined;
   center?: { lat: number; lng: number };
   markerPosition?: { lat: number; lng: number };
   markers?: { lat: number; lng: number }[];
   polygon?: { lat: number, lng: number }[];
 };
-
 
 const MapWithPolygon = ({ polygon }: { polygon?: { lat: number, lng: number }[]}) => {
   const map = useMap();
@@ -57,9 +57,7 @@ const MissingApiKeyCard = () => (
 );
 
 
-export default function GoogleMap({ center, markerPosition, markers, polygon }: GoogleMapProps) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
+function GoogleMap({ apiKey, center, markerPosition, markers, polygon }: GoogleMapProps) {
   if (!apiKey) {
     return <MissingApiKeyCard />;
   }
@@ -82,3 +80,11 @@ export default function GoogleMap({ center, markerPosition, markers, polygon }: 
     </APIProvider>
   );
 }
+
+// Server Component Wrapper
+const GoogleMapWrapper = (props: Omit<GoogleMapProps, 'apiKey'>) => {
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    return <GoogleMap apiKey={apiKey} {...props} />;
+};
+
+export default GoogleMapWrapper;

@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import GoogleMap from "@/components/dashboard/GoogleMap";
+import GoogleMapWrapper from "@/components/dashboard/GoogleMap";
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
@@ -196,7 +196,7 @@ export default function SettingsPage() {
               </div>
             ) : (
               <div className="relative h-96 w-full rounded-lg overflow-hidden">
-                <GoogleMap center={mapCenter} markerPosition={mapCenter} />
+                <GoogleMapWrapper center={mapCenter} markerPosition={mapCenter} />
               </div>
             )}
             <Button disabled>

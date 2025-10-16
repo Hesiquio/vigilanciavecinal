@@ -5,7 +5,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { MapPin, Phone, MessageCircle, ShieldAlert, Siren, CloudSunRain, UserX } from "lucide-react";
-import GoogleMap from "./GoogleMap";
+import GoogleMapWrapper from "./GoogleMap";
 import type { SosAlert, AlertCategory } from "../AppShell";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -80,7 +80,7 @@ export function AlertCard({ alert }: AlertCardProps) {
         </div>
       </div>
       <div className="relative h-48 w-full rounded-lg overflow-hidden">
-        <GoogleMap markerPosition={markerPosition ?? undefined} />
+        <GoogleMapWrapper markerPosition={markerPosition ?? undefined} />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Button variant="outline">
