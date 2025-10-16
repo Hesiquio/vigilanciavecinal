@@ -8,12 +8,14 @@ import { useFirebase } from "@/firebase";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import type { UserProfile } from "@/types";
+import { useToast } from "@/hooks/use-toast";
 
 const provider = new GoogleAuthProvider();
 
 export default function LoginPage() {
   const { auth, firestore, user, isUserLoading } = useFirebase();
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     // Redirect logged-in users to the welcome page for profile check/completion
@@ -42,8 +44,21 @@ export default function LoginPage() {
         }
         // Always redirect to welcome page after login
         router.push("/welcome");
-      } catch (error) {
-        console.error("Error during sign-in or profile check:", error);
+      } catch (error: any) {
+        console.error("Error during sign-in:", error);
+        if (error.code === 'auth/unauthorized-domain') {
+            toast({
+                variant: "destructive",
+                title: "Dominio no Autorizado",
+                description: "Este dominio no está autorizado para usar Firebase Authentication. Ve a la Consola de Firebase -> Authentication -> Settings -> Authorized domains y añade tu dominio.",
+            });
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Error de Autenticación",
+                description: "Ocurrió un error inesperado durante el inicio de sesión."
+            });
+        }
       }
     }
   };
