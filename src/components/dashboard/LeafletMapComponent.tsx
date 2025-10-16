@@ -24,24 +24,29 @@ type MapProps = {
   polygon?: { lat: number, lng: number }[];
 };
 
+// This component is responsible for updating the map view when props change.
 const MapUpdater = ({ center, markers, polygon, markerPosition }: MapProps) => {
     const map = useMap();
     useEffect(() => {
         const targetCenter = center || polygon?.[0] || markers?.[0] || markerPosition;
         if (targetCenter) {
-             map.setView([targetCenter.lat, targetCenter.lng], 15);
+             map.setView([targetCenter.lat, targetCenter.lng], map.getZoom() || 15);
         }
+        
         if (polygon && polygon.length > 0) {
             const bounds = L.latLngBounds(polygon.map(p => [p.lat, p.lng]));
             map.fitBounds(bounds);
         } else if (markers && markers.length > 1) {
             const bounds = L.latLngBounds(markers.map(p => [p.lat, p.lng]));
             map.fitBounds(bounds);
+        } else if (markerPosition) {
+             map.setView([markerPosition.lat, markerPosition.lng], map.getZoom() || 15);
         }
 
     }, [center, markers, polygon, markerPosition, map]);
     return null;
 }
+
 
 const LeafletMapComponent = ({ center, markerPosition, markers, polygon }: MapProps) => {
     const defaultCenter: [number, number] = [19.4326, -99.1332]; // Mexico City
