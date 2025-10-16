@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { ReactNode } from "react";
@@ -24,6 +25,7 @@ import { Button } from "./ui/button";
 
 
 export type AlertCategory = "Robo" | "Accidentes" | "Desastres Naturales" | "Personas Sospechosas";
+export type AlertStatus = "active" | "resolved" | "expired";
 
 export interface SosAlert {
   id: string;
@@ -37,6 +39,7 @@ export interface SosAlert {
   location: string;
   message: string;
   category: AlertCategory;
+  status: AlertStatus;
 }
 
 const navItems = [

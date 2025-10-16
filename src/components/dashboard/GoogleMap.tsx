@@ -3,12 +3,14 @@
 
 import { APIProvider, Map, useMap, AdvancedMarker } from "@vis.gl/react-google-maps";
 import { useEffect } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { MapPin } from "lucide-react";
 
 type GoogleMapProps = {
   center?: { lat: number; lng: number };
   markerPosition?: { lat: number; lng: number };
   markers?: { lat: number; lng: number }[];
-  polygon?: { lat: number; lng: number }[];
+  polygon?: { lat: number, lng: number }[];
 };
 
 
@@ -36,13 +38,30 @@ const MapWithPolygon = ({ polygon }: { polygon?: { lat: number, lng: number }[]}
   return null;
 }
 
+const MissingApiKeyCard = () => (
+    <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center p-4">
+        <Alert variant="destructive" className="max-w-md">
+            <MapPin className="h-4 w-4" />
+            <AlertTitle>Error al Cargar el Mapa</AlertTitle>
+            <AlertDescription>
+                La clave de API de Google Maps no está configurada o el proyecto no tiene la facturación habilitada. Por favor, revisa tu configuración en Google Cloud.
+            </AlertDescription>
+        </Alert>
+    </div>
+);
+
 
 export default function GoogleMap({ center, markerPosition, markers, polygon }: GoogleMapProps) {
-  // Center map on polygon or markers, otherwise default to Mexico City
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+  if (!apiKey) {
+    return <MissingApiKeyCard />;
+  }
+
   const mapCenter = center || polygon?.[0] || markers?.[0] || markerPosition || { lat: 19.4326, lng: -99.1332 };
 
   return (
-    <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!} >
+    <APIProvider apiKey={apiKey} >
       <Map
         center={mapCenter}
         defaultZoom={15}

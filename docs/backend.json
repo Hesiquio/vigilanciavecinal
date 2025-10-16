@@ -70,11 +70,35 @@
             "type": "string"
           }
         },
+        "status": {
+            "type": "string",
+            "enum": ["active", "resolved", "expired"],
+            "description": "The current status of the alert."
+        },
         "timestamp": {
           "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp"
         }
       },
-      "required": ["userId", "userName", "message", "location", "category", "audience", "timestamp"]
+      "required": ["userId", "userName", "message", "location", "category", "audience", "status", "timestamp"]
+    },
+    "Aviso": {
+      "title": "Aviso",
+      "description": "Represents a non-urgent announcement for meetings, events, etc.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userAvatarUrl": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "eventTimestamp": { "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp" },
+        "audience": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "timestamp": { "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp" }
+      },
+      "required": ["userId", "userName", "title", "description", "eventTimestamp", "audience", "timestamp"]
     },
     "SurveillanceZone": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -118,6 +142,50 @@
       },
       "required": ["userId", "name", "email", "status"]
     },
+    "Group": {
+        "title": "Group",
+        "description": "Represents a user-created group.",
+        "type": "object",
+        "properties": {
+            "name": { "type": "string", "description": "The name of the group." },
+            "ownerId": { "type": "string", "description": "The UID of the user who owns the group." }
+        },
+        "required": ["name", "ownerId"]
+    },
+    "GroupMember": {
+        "title": "Group Member",
+        "description": "Represents a member of a user-created group.",
+        "type": "object",
+        "properties": {
+            "userId": { "type": "string", "description": "The UID of the group member." },
+            "name": { "type": "string", "description": "The name of the group member." },
+            "email": { "type": "string", "description": "The email of the group member." },
+            "avatarUrl": { "type": "string", "description": "The avatar URL of the group member." },
+            "status": {
+                "type": "string",
+                "enum": ["pending", "accepted", "requested"],
+                "description": "The status of the group membership."
+            },
+            "isSharingLocation": {
+                "type": "boolean",
+                "description": "Whether the member is currently sharing their location with the group."
+            },
+             "location": {
+                "type": "string",
+                "description": "The user's last known location as a string 'Lat: XX.XXXX, Lon: YY.YYYY'."
+            }
+        },
+        "required": ["userId", "name", "email", "status"]
+    },
+    "UserGroup": {
+        "title": "User Group",
+        "description": "A reference to a group a user is a member of.",
+        "type": "object",
+        "properties": {
+            "name": { "type": "string", "description": "The name of the group." }
+        },
+        "required": ["name"]
+    },
     "ChatMessage": {
         "title": "Chat Message",
         "description": "A single message within a chat.",
@@ -127,7 +195,8 @@
             "userId": { "type": "string" },
             "userName": { "type": "string" },
             "userAvatarUrl": { "type": "string" },
-            "timestamp": { "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp" }
+            "timestamp": { "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp" },
+            "alertId": { "type": "string", "description": "Optional ID of the SOS alert related to this message." }
         },
         "required": ["text", "userId", "userName", "timestamp"]
     }
@@ -148,6 +217,10 @@
       "schema": { "$ref": "#/backend/entities/FamilyMember" },
       "description": "Subcollection storing the family members of a user."
     },
+     "/users/{userId}/groups/{groupId}": {
+      "schema": { "$ref": "#/backend/entities/UserGroup" },
+      "description": "Subcollection storing references to groups a user is a member of."
+    },
     "/users/{userId}/alert-feed/{alertId}": {
       "schema": { "$ref": "#/backend/entities/SosAlert" },
       "description": "A personalized feed of alerts relevant to the user (from family, neighbors, etc.). This is populated by backend logic."
@@ -155,6 +228,10 @@
     "/sos-alerts/{alertId}": {
       "schema": { "$ref": "#/backend/entities/SosAlert" },
       "description": "Stores all SOS alerts. Writable by any authenticated user. This collection is processed by backend logic to populate user feeds."
+    },
+     "/avisos/{avisoId}": {
+      "schema": { "$ref": "#/backend/entities/Aviso" },
+      "description": "Stores all non-urgent announcements."
     },
     "/surveillance-zones/{zoneId}": {
       "schema": { "$ref": "#/backend/entities/SurveillanceZone" },
@@ -168,7 +245,15 @@
         "schema": { "$ref": "#/backend/entities/ChatMessage" },
         "description": "Messages within a specific neighborhood chat, grouped by postal code."
     },
-    "/group-chats/{groupId}/messages/{messageId}": {
+    "/groups/{groupId}": {
+      "schema": { "$ref": "#/backend/entities/Group" },
+      "description": "Stores metadata for user-created groups."
+    },
+    "/groups/{groupId}/members/{memberId}": {
+      "schema": { "$ref": "#/backend/entities/GroupMember" },
+      "description": "Stores the members of a specific user-created group."
+    },
+    "group-chats/{groupId}/messages/{messageId}": {
         "schema": { "$ref": "#/backend/entities/ChatMessage" },
         "description": "Messages within a specific manually-created group chat."
     }

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useFirebase } from "@/firebase";
@@ -14,7 +15,7 @@ import {
 import { AlertCard } from "@/components/dashboard/AlertCard";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy, limit } from "firebase/firestore";
+import { collection, query, orderBy, limit, where } from "firebase/firestore";
 import type { SosAlert } from "@/components/AppShell";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -48,8 +49,10 @@ export default function Home() {
     () => {
       if (!firestore || !user) return null;
       // This query now points to the user-specific, secure alert feed.
+      // It also filters for only 'active' alerts.
       return query(
         collection(firestore, `users/${user.uid}/alert-feed`),
+        where("status", "==", "active"),
         orderBy("timestamp", "desc"),
         limit(1)
       );

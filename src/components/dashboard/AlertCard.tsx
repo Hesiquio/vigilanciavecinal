@@ -1,15 +1,21 @@
 
+
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Phone, MessageCircle, ShieldAlert, Siren, CloudSunRain, UserX } from "lucide-react";
+import { MapPin, Phone, MessageCircle, ShieldAlert, Siren, CloudSunRain, UserX, CheckCircle, Clock } from "lucide-react";
 import GoogleMap from "./GoogleMap";
 import type { SosAlert, AlertCategory } from "../AppShell";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
 import React from "react";
+import { useFirebase } from "@/firebase";
+import { doc, updateDoc } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+
 
 type AlertCardProps = {
   alert: SosAlert;
@@ -34,6 +40,14 @@ const formatTimestamp = (timestamp: SosAlert['timestamp']): string => {
   return `hace ${formatDistanceToNow(date, { locale: es })}`;
 }
 
+const isExpired = (timestamp: SosAlert['timestamp']): boolean => {
+    if (!timestamp) return false;
+    const alertDate = new Date(timestamp.seconds * 1000);
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    return alertDate < oneDayAgo;
+}
+
 const categoryIcons: Record<AlertCategory, React.ElementType> = {
     "Robo": ShieldAlert,
     "Accidentes": Siren,
@@ -50,9 +64,34 @@ const categoryColors: Record<AlertCategory, string> = {
 
 
 export function AlertCard({ alert }: AlertCardProps) {
+  const { user, firestore } = useFirebase();
+  const { toast } = useToast();
   const markerPosition = parseLocation(alert.location);
   const Icon = categoryIcons[alert.category] || ShieldAlert;
   const colorClass = categoryColors[alert.category] || "border-destructive/50 text-destructive";
+  
+  const alertIsExpired = isExpired(alert.timestamp);
+  const isOwner = user?.uid === alert.userId;
+
+  const handleResolveAlert = async () => {
+    if (!firestore || !isOwner) return;
+    const alertRef = doc(firestore, "sos-alerts", alert.id);
+    try {
+        await updateDoc(alertRef, { status: 'resolved' });
+        toast({
+            title: "Alerta Atendida",
+            description: "Has marcado la incidencia como resuelta."
+        });
+    } catch(error) {
+        console.error("Error resolving alert:", error);
+        toast({
+            title: "Error",
+            description: "No se pudo actualizar la alerta.",
+            variant: "destructive"
+        })
+    }
+  }
+
 
   return (
     <div className="space-y-4">
@@ -69,6 +108,12 @@ export function AlertCard({ alert }: AlertCardProps) {
            <div className={cn("mt-1 flex items-center gap-2 text-sm font-semibold", colorClass)}>
                 <Icon className="h-4 w-4" />
                 <span>{alert.category}</span>
+                {alert.status === 'resolved' && (
+                    <Badge variant="secondary" className="bg-green-100 text-green-800">Atendida</Badge>
+                )}
+                {alertIsExpired && alert.status !== 'resolved' && (
+                    <Badge variant="outline"><Clock className="mr-1 h-3 w-3" /> Expirada</Badge>
+                )}
             </div>
           <p className="mt-1 text-sm text-foreground">{alert.message}</p>
           <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
@@ -84,9 +129,15 @@ export function AlertCard({ alert }: AlertCardProps) {
         <Button variant="outline">
           <MessageCircle className="mr-2 h-4 w-4" /> Responder
         </Button>
-        <Button>
-          <Phone className="mr-2 h-4 w-4" /> Llamar al Grupo
-        </Button>
+        {isOwner && alert.status === 'active' && !alertIsExpired ? (
+            <Button variant="secondary" onClick={handleResolveAlert}>
+                <CheckCircle className="mr-2 h-4 w-4" /> Marcar como Atendida
+            </Button>
+        ) : (
+            <Button disabled>
+                <Phone className="mr-2 h-4 w-4" /> Llamar al Grupo
+            </Button>
+        )}
       </div>
     </div>
   );
