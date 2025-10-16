@@ -74,7 +74,7 @@ export function SosModal({ user }: SosModalProps) {
             setLocation("No se pudo obtener la ubicación.");
             toast({
                 title: "Error de Ubicación",
-                description: "No se pudo obtener la ubicación. Por favor, ingrésala manualmente.",
+                description: "No se pudo obtener la ubicación. Por favor, ingrésala manually.",
                 variant: "destructive"
             })
           }
