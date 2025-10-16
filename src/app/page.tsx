@@ -23,21 +23,24 @@ export default function Home() {
   const isLoading = isUserLoading || isProfileLoading;
 
   useEffect(() => {
-    // If auth state or profile data is still loading, wait.
+    // 1. Wait until all loading is done.
     if (isLoading) {
       return;
     }
 
-    // After loading, if there's no user, they must log in.
+    // 2. If, after loading, there is no user, redirect to login.
     if (!user) {
       router.push("/login");
       return;
     }
 
-    // After loading, if there IS a user, we check their profile.
-    // The redirect should ONLY happen if loading is complete AND the fetched profile lacks a postal code.
-    if (userProfile === null || (userProfile && !userProfile.postalCode)) {
-      router.push("/welcome");
+    // 3. Only after loading is complete and we have a user,
+    // we check the profile. If the profile exists but is missing the postal code, redirect.
+    // We check `userProfile !== undefined` to ensure the hook has resolved.
+    if (userProfile !== undefined) {
+        if (userProfile === null || !userProfile.postalCode) {
+            router.push("/welcome");
+        }
     }
     
   }, [user, userProfile, isLoading, router]);
