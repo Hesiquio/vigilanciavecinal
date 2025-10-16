@@ -6,46 +6,18 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
-import { useDoc, useMemoFirebase } from "@/firebase";
-import { doc } from "firebase/firestore";
-import type { UserProfile } from "@/types";
 
 export default function Home() {
   const { user, isUserLoading, auth, firestore } = useFirebase();
   const router = useRouter();
 
-  const userDocRef = useMemoFirebase(
-    () => (user && firestore ? doc(firestore, "users", user.uid) : null),
-    [user, firestore]
-  );
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
-
-  const isLoading = isUserLoading || isProfileLoading;
-
+  // Esta es la lógica de redirección simplificada y corregida.
+  // Solo se ejecuta una vez que la carga de autenticación ha terminado.
   useEffect(() => {
-    // 1. Wait until all loading is done.
-    if (isLoading) {
-      return;
-    }
-
-    // 2. If, after loading, there is no user, redirect to login.
-    if (!user) {
+    if (!isUserLoading && !user) {
       router.push("/login");
-      return;
     }
-
-    // 3. Only after loading is complete and we have a user,
-    // we check if the profile exists and is complete.
-    // We check userProfile !== undefined to make sure the hook has resolved.
-    // If the profile is null (doesn't exist) or doesn't have a postal code, redirect.
-    if (userProfile !== undefined) {
-        if (userProfile === null || !userProfile.postalCode) {
-            router.push("/welcome");
-        }
-    }
-    
-  }, [user, userProfile, isLoading, router]);
-
+  }, [user, isUserLoading, router]);
 
   const handleSignOut = async () => {
     if (auth) {
@@ -53,11 +25,10 @@ export default function Home() {
       router.push("/login");
     }
   };
-  
-  // Display a loading screen while waiting for auth and profile data.
-  // This also prevents a flash of the dashboard before a redirect decision is made.
-  // The logic is a bit more defensive: show loading if the final redirect check hasn't been possible yet.
-  if (isLoading || !user || (userProfile === undefined)) {
+
+  // Muestra una pantalla de carga robusta mientras se verifica la autenticación.
+  // Esto evita cualquier renderizado o redirección prematura.
+  if (isUserLoading || !user) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
         <div className="text-center">
@@ -66,20 +37,8 @@ export default function Home() {
       </div>
     );
   }
-  
-  // A specific check to avoid rendering the dashboard if a redirect is imminent
-  if (userProfile && !userProfile.postalCode) {
-      return (
-         <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
-            <div className="text-center">
-              <p className="text-lg text-muted-foreground">Redirigiendo...</p>
-            </div>
-         </div>
-      );
-  }
 
-
-  // If we reach here, the user is logged in and their profile is complete.
+  // Si llegamos aquí, el usuario está autenticado y puede ver el dashboard.
   return (
     <AppShell user={user} onSignOut={handleSignOut}>
        <div className="mb-6">
