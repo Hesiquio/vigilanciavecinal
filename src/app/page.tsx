@@ -79,14 +79,14 @@ export default function Home() {
     // Firestore 'in' queries are limited to 30 elements.
     // If the user is in more than ~28 groups, this will fail.
     // This is a reasonable limitation for this app.
-    if (audience.length === 0 || audience.length > 30) return null;
+    if (audience.length === 0) return null;
 
     // Step 4: Query the global alerts collection for any active alerts
     // where the audience list contains any of the user's relevant groups.
     return query(
       collection(firestore, "sos-alerts"),
       where("status", "==", "active"),
-      where("audience", "array-contains-any", audience),
+      where("audience", "array-contains-any", audience.slice(0, 30)),
       orderBy("timestamp", "desc"),
       limit(1)
     );
