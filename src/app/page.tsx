@@ -20,28 +20,26 @@ export default function Home() {
   );
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
 
-  // isLoading is true until both the user and their profile have finished loading.
   const isLoading = isUserLoading || isProfileLoading;
 
   useEffect(() => {
-    // 1. If still loading, do nothing yet.
+    // If auth state or profile data is still loading, wait.
     if (isLoading) {
       return;
     }
 
-    // 2. After loading, if there's no user, redirect to login.
+    // After loading, if there's no user, they must log in.
     if (!user) {
       router.push("/login");
       return;
     }
-    
-    // 3. After loading, if there is a user but their profile is missing the postal code,
-    // then and only then, redirect to the welcome page.
-    // This prevents premature redirection before userProfile is loaded.
+
+    // After loading, if there IS a user, we check their profile.
+    // The redirect should ONLY happen if loading is complete AND the fetched profile lacks a postal code.
     if (userProfile === null || (userProfile && !userProfile.postalCode)) {
       router.push("/welcome");
     }
-
+    
   }, [user, userProfile, isLoading, router]);
 
 
@@ -53,8 +51,8 @@ export default function Home() {
   };
   
   // Display a loading screen while waiting for auth and profile data.
-  // This also prevents a flash of the dashboard before a redirect can happen.
-  if (isLoading || !userProfile || !userProfile.postalCode) {
+  // This also prevents a flash of the dashboard before a redirect decision is made.
+  if (isLoading || !user || !userProfile || !userProfile.postalCode) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
         <div className="text-center">
