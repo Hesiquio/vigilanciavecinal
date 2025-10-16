@@ -17,7 +17,7 @@ const MapWithPolygon = ({ polygon }: { polygon?: { lat: number, lng: number }[]}
   const map = useMap();
 
   useEffect(() => {
-    if (map && polygon) {
+    if (map && polygon && polygon.length > 0) {
       const polygonPath = new google.maps.Polygon({
         paths: polygon,
         strokeColor: "hsl(var(--primary))",
@@ -28,6 +28,10 @@ const MapWithPolygon = ({ polygon }: { polygon?: { lat: number, lng: number }[]}
       });
       polygonPath.setMap(map);
       
+      const bounds = new google.maps.LatLngBounds();
+      polygon.forEach(point => bounds.extend(point));
+      map.fitBounds(bounds);
+
       return () => {
         polygonPath.setMap(null);
       }
