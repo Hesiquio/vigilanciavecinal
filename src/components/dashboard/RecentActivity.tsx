@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
@@ -8,6 +9,9 @@ import type { SosAlert } from "../AppShell";
 import type { Aviso } from "@/types";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { AlertCard } from "./AlertCard";
 
 // Combine types for the activity feed
 type ActivityItem = (SosAlert & { type: 'alert' }) | (Aviso & { type: 'aviso' });
@@ -21,6 +25,7 @@ const formatTimestamp = (timestamp: { seconds: number, nanoseconds: number }): s
 
 export function RecentActivity() {
   const { firestore } = useFirebase();
+  const [selectedAlert, setSelectedAlert] = useState<SosAlert | null>(null);
 
   // Query for the latest SOS alert
   const alertsQuery = useMemoFirebase(
@@ -48,13 +53,21 @@ export function RecentActivity() {
 
   const isLoading = isLoadingAlerts || isLoadingAvisos;
 
+  const handleAlertClick = (item: ActivityItem) => {
+    if (item.type === 'alert') {
+        setSelectedAlert(item);
+    }
+    // Could handle avisos here too if needed
+  }
+
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle>Actividad Reciente</CardTitle>
-        <CardDescription>Últimos avisos y alertas en tus grupos.</CardDescription>
+        <CardDescription>Últimos avisos y alertas en tus grupos. Haz clic en una alerta para ver detalles.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-2">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center p-6 text-sm text-muted-foreground">
               <Loader className="h-6 w-6 animate-spin"/>
@@ -62,16 +75,21 @@ export function RecentActivity() {
           </div>
         ) : combinedActivity && combinedActivity.length > 0 ? (
           combinedActivity.map((item) => (
-            <div key={item.id} className="flex items-start gap-4 rounded-lg bg-secondary/50 p-3">
-              <div className={`rounded-full p-2 ${item.type === 'alert' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
+            <button 
+                key={item.id} 
+                className="flex w-full items-start gap-4 rounded-lg bg-secondary/50 p-3 text-left transition-colors hover:bg-secondary"
+                onClick={() => handleAlertClick(item)}
+                disabled={item.type !== 'alert'}
+            >
+              <div className={`mt-1 rounded-full p-2 ${item.type === 'alert' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
                 {item.type === 'alert' ? <ShieldAlert className="h-5 w-5" /> : <Megaphone className="h-5 w-5" />}
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium">{item.type === 'alert' ? item.category : item.title}</p>
-                <p className="text-xs text-muted-foreground">{item.type === 'alert' ? item.message : item.description}</p>
+                <p className="text-xs text-muted-foreground line-clamp-2">{item.type === 'alert' ? item.message : item.description}</p>
                  <p className="text-xs text-muted-foreground mt-1">{formatTimestamp(item.timestamp)} por {item.userName}</p>
               </div>
-            </div>
+            </button>
           ))
         ) : (
           <div className="flex flex-col items-center justify-center h-24 border-2 border-dashed rounded-lg">
@@ -81,5 +99,15 @@ export function RecentActivity() {
         )}
       </CardContent>
     </Card>
+
+    <Dialog open={!!selectedAlert} onOpenChange={(isOpen) => !isOpen && setSelectedAlert(null)}>
+        <DialogContent className="max-w-lg w-full">
+            <DialogHeader>
+                <DialogTitle>Detalle de la Alerta</DialogTitle>
+            </DialogHeader>
+            {selectedAlert && <AlertCard alert={selectedAlert} />}
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }

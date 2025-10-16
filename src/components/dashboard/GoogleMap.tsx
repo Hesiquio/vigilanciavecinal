@@ -1,22 +1,11 @@
 
 "use client";
 
-import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon } from 'react-leaflet';
+import dynamic from 'next/dynamic';
+import { useEffect, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-import { useEffect } from 'react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { MapPin } from "lucide-react";
-
-// Fix for default icon not showing in Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-});
-
 
 type MapProps = {
   center?: { lat: number; lng: number };
@@ -25,41 +14,12 @@ type MapProps = {
   polygon?: { lat: number, lng: number }[];
 };
 
-const MapUpdater = ({ center, markers, polygon, markerPosition }: MapProps) => {
-    const map = useMap();
-    useEffect(() => {
-        const targetCenter = center || polygon?.[0] || markers?.[0] || markerPosition;
-        if (targetCenter) {
-             map.setView([targetCenter.lat, targetCenter.lng], 15);
-        }
-        if (polygon && polygon.length > 0) {
-            const bounds = L.latLngBounds(polygon.map(p => [p.lat, p.lng]));
-            map.fitBounds(bounds);
-        }
+// Dynamically import the map component to prevent SSR issues
+const LeafletMap = dynamic(() => import('./LeafletMapComponent'), {
+    ssr: false,
+    loading: () => <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center"><p>Cargando mapa...</p></div>,
+});
 
-    }, [center, markers, polygon, markerPosition, map]);
-    return null;
-}
-
-const LeafletMap = ({ center, markerPosition, markers, polygon }: MapProps) => {
-    const defaultCenter: [number, number] = [19.4326, -99.1332]; // Mexico City
-    const displayCenter = center ? [center.lat, center.lng] : (polygon?.[0] ? [polygon[0].lat, polygon[0].lng] : (markers?.[0] ? [markers[0].lat, markers[0].lng] : (markerPosition ? [markerPosition.lat, markerPosition.lng] : defaultCenter)));
-    
-    return (
-        <MapContainer center={displayCenter} zoom={15} style={{ height: '100%', width: '100%' }}>
-            <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            />
-            {markerPosition && <Marker position={[markerPosition.lat, markerPosition.lng]} />}
-            {markers?.map((pos, i) => <Marker key={i} position={[pos.lat, pos.lng]} />)}
-            {polygon && polygon.length > 0 && (
-                 <Polygon pathOptions={{ color: 'hsl(var(--primary))' }} positions={polygon.map(p => [p.lat, p.lng])} />
-            )}
-            <MapUpdater center={center} markers={markers} polygon={polygon} markerPosition={markerPosition} />
-        </MapContainer>
-    );
-};
 
 const MissingLocationCard = () => (
     <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center p-4">
@@ -75,15 +35,12 @@ const MissingLocationCard = () => (
 
 
 export default function MapWrapper(props: MapProps) {
-  // A client component can't be async, so we need to wrap the dynamic import
-  // in a component that can use state and effects.
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Show a placeholder or loader while the component is not yet mounted on the client
   if (!isClient) {
     return <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center"><p>Cargando mapa...</p></div>;
   }
