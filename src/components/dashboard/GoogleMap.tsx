@@ -1,13 +1,12 @@
 
 "use client";
 
-import { APIProvider, Map, useMap, AdvancedMarker } from "@vis.gl/react-google-maps";
+import { APIProvider, Map, AdvancedMarker, useMap } from "@vis.gl/react-google-maps";
 import { useEffect } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { MapPin } from "lucide-react";
 
-type GoogleMapClientProps = {
-  apiKey: string | undefined;
+type MapProps = {
   center?: { lat: number; lng: number };
   markerPosition?: { lat: number; lng: number };
   markers?: { lat: number; lng: number }[];
@@ -56,16 +55,18 @@ const MissingApiKeyCard = () => (
     </div>
 );
 
+function GoogleMapWrapper(props: MapProps) {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-function GoogleMapClient({ apiKey, center, markerPosition, markers, polygon }: GoogleMapClientProps) {
   if (!apiKey) {
     return <MissingApiKeyCard />;
   }
 
+  const { center, markerPosition, markers, polygon } = props;
   const mapCenter = center || polygon?.[0] || markers?.[0] || markerPosition || { lat: 19.4326, lng: -99.1332 };
 
   return (
-    <APIProvider apiKey={apiKey} >
+    <APIProvider apiKey={apiKey}>
       <Map
         center={mapCenter}
         defaultZoom={15}
@@ -80,11 +81,5 @@ function GoogleMapClient({ apiKey, center, markerPosition, markers, polygon }: G
     </APIProvider>
   );
 }
-
-// This is a Server Component that will pass the API key to the Client Component.
-const GoogleMapWrapper = (props: Omit<GoogleMapClientProps, 'apiKey'>) => {
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    return <GoogleMapClient apiKey={apiKey} {...props} />;
-};
 
 export default GoogleMapWrapper;
