@@ -9,11 +9,11 @@ import { Label } from "@/components/ui/label";
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Loader, MapPin, CheckCircle } from "lucide-react";
+import { Loader, MapPin, CheckCircle, LogOut } from "lucide-react";
 import type { UserProfile } from "@/types";
 
 export default function WelcomePage() {
-  const { user, isUserLoading, firestore } = useFirebase();
+  const { user, isUserLoading, firestore, auth } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -121,6 +121,13 @@ export default function WelcomePage() {
     }
   };
 
+  const handleSignOut = async () => {
+    if (auth) {
+      await auth.signOut();
+      router.push("/login");
+    }
+  };
+
   const isLoading = isUserLoading || isProfileLoading;
 
   if (isLoading || !user) {
@@ -163,9 +170,15 @@ export default function WelcomePage() {
             </div>
         </div>
         
-        <Button onClick={handleContinue} className="w-full" disabled={isSaving}>
-            {isSaving ? "Guardando..." : "Verificar y Continuar"}
-        </Button>
+        <div className="space-y-2">
+            <Button onClick={handleContinue} className="w-full" disabled={isSaving}>
+                {isSaving ? "Guardando..." : "Verificar y Continuar"}
+            </Button>
+             <Button variant="link" onClick={handleSignOut} className="w-full text-muted-foreground">
+                <LogOut className="mr-2 h-4 w-4" />
+                Cerrar Sesión
+            </Button>
+        </div>
       </div>
     </div>
   );
