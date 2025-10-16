@@ -1,8 +1,8 @@
 
 "use client";
 
-import { APIProvider, Map, AdvancedMarker, useMap } from "@vis.gl/react-google-maps";
-import { useEffect } from "react";
+import { APIProvider, Map, AdvancedMarker, useMap, MapCameraProps } from "@vis.gl/react-google-maps";
+import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { MapPin } from "lucide-react";
 
@@ -23,16 +23,22 @@ function GoogleMapClient({
   polygon 
 }: MapProps & { apiKey: string }) {
 
-  const mapCenter = center || polygon?.[0] || markers?.[0] || markerPosition || { lat: 19.4326, lng: -99.1332 };
+  const defaultCenter = { lat: 19.4326, lng: -99.1332 }; // Mexico City
+  const [mapCenter, setMapCenter] = useState(center || polygon?.[0] || markers?.[0] || markerPosition || defaultCenter);
+  
+  const cameraProps: MapCameraProps = {
+    center: mapCenter,
+    zoom: 15,
+  }
 
   return (
     <APIProvider apiKey={apiKey}>
       <Map
-        center={mapCenter}
-        defaultZoom={15}
+        {...cameraProps}
         gestureHandling={"greedy"}
         disableDefaultUI={true}
         mapId="b1b2f2c2a3e4f5a6"
+        className="w-full h-full"
       >
         {markerPosition && <AdvancedMarker position={markerPosition} />}
         {markers && markers.map((pos, i) => <AdvancedMarker key={i} position={pos} />)}
