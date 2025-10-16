@@ -23,6 +23,7 @@ type AlertCardProps = {
 
 // Basic parsing of "Lat: 19.4326, Lon: -99.1332"
 const parseLocation = (locationStr: string): { lat: number; lng: number } | null => {
+  if (!locationStr) return null;
   const match = locationStr.match(/Lat: ([-]?\d+\.\d+), Lon: ([-]?\d+\.\d+)/);
   if (match && match.length === 3) {
     const lat = parseFloat(match[1]);
@@ -57,6 +58,7 @@ const categoryColors: Record<AlertCategory, string> = {
 
 export function AlertCard({ alert }: AlertCardProps) {
   const markerPosition = parseLocation(alert.location);
+
   const Icon = categoryIcons[alert.category] || ShieldAlert;
   const colorClass = categoryColors[alert.category] || "border-destructive/50 text-destructive";
 

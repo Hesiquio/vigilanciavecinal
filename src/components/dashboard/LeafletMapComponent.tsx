@@ -19,7 +19,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow.src,
 });
 
-
 type MapUpdaterProps = {
   center?: { lat: number; lng: number };
   markerPosition?: { lat: number; lng: number };
