@@ -42,14 +42,14 @@ const MissingApiKeyCard = () => (
     <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center p-4">
         <Alert variant="destructive" className="max-w-md">
             <MapPin className="h-4 w-4" />
-            <AlertTitle>Error al Cargar el Mapa</AlertTitle>
+            <AlertTitle>Error: Fallo de Autenticación del Mapa</AlertTitle>
             <AlertDescription>
-                La clave de API de Google Maps no está configurada, no es válida o el dominio actual no está autorizado. Revisa la consola de Google Cloud y asegúrate de que la clave:
+                Hay un problema con tu clave de API de Google Maps. Asegúrate de que el valor en tu archivo `.env.local` para `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` sea correcto.
                 <ul className="list-disc pl-5 mt-2">
-                    <li>Exista y esté correctamente configurada en las variables de entorno.</li>
-                    <li>Tenga la "Maps JavaScript API" habilitada.</li>
-                    <li>No tenga restricciones de referente HTTP o, si las tiene, que incluyan este dominio.</li>
-                     <li>Esté asociada a un proyecto con la facturación habilitada.</li>
+                    <li>Verifica que la clave de API exista y esté copiada correctamente.</li>
+                    <li>Asegúrate de que la "Maps JavaScript API" esté habilitada en tu proyecto de Google Cloud.</li>
+                    <li>Confirma que tu proyecto de Google Cloud tenga la facturación habilitada.</li>
+                    <li>Revisa que las restricciones de la clave (Referentes HTTP) permitan el dominio en el que se ejecuta la aplicación.</li>
                 </ul>
             </AlertDescription>
         </Alert>
