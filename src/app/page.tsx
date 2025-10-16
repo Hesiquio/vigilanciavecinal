@@ -37,6 +37,7 @@ const placeholderAlert: SosAlert = {
 
 
 function DashboardContent({ alerts }: { alerts: SosAlert[] }) {
+  // If alerts exist, use them. Otherwise, use the placeholder.
   const displayAlerts = alerts && alerts.length > 0 ? alerts : [placeholderAlert];
   
   return (
@@ -46,6 +47,7 @@ function DashboardContent({ alerts }: { alerts: SosAlert[] }) {
           <CardTitle className="text-destructive">Alerta Activa</CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Always render an AlertCard, with a real alert or the placeholder */}
           <AlertCard alert={displayAlerts[0]} />
         </CardContent>
       </Card>
@@ -65,12 +67,11 @@ export default function Home() {
   );
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
 
-  // Corrected Query: Point to the user's specific alert-feed subcollection.
+  // This query now safely points to a subcollection the user is allowed to read.
   const alertsQuery = useMemoFirebase(() => {
     if (!firestore || !user) {
       return null;
     }
-    // This query now safely points to a subcollection the user is allowed to read.
     return query(
       collection(firestore, "users", user.uid, "alert-feed"),
       where("status", "==", "active"),
@@ -99,6 +100,8 @@ export default function Home() {
     }
   };
   
+  // The page is loading if the user session is loading, the user profile is loading,
+  // or if we have started to query for alerts but they haven't loaded yet.
   const isLoading = isUserLoading || isProfileLoading || (alertsQuery !== null && areAlertsLoading);
 
 
@@ -126,6 +129,8 @@ export default function Home() {
             <p>Cargando alertas...</p>
           </div>
         ) : (
+            // Pass the alerts (which could be null or empty) to DashboardContent.
+            // DashboardContent will handle showing the placeholder if needed.
             <DashboardContent alerts={alerts || []} />
         )}
     </AppShell>
