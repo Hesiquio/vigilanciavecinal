@@ -44,7 +44,13 @@ const MissingApiKeyCard = () => (
             <MapPin className="h-4 w-4" />
             <AlertTitle>Error al Cargar el Mapa</AlertTitle>
             <AlertDescription>
-                La clave de API de Google Maps no está configurada o el proyecto no tiene la facturación habilitada. Por favor, revisa tu configuración en Google Cloud.
+                La clave de API de Google Maps no está configurada, no es válida o el dominio actual no está autorizado. Revisa la consola de Google Cloud y asegúrate de que la clave:
+                <ul className="list-disc pl-5 mt-2">
+                    <li>Exista y esté correctamente configurada en las variables de entorno.</li>
+                    <li>Tenga la "Maps JavaScript API" habilitada.</li>
+                    <li>No tenga restricciones de referente HTTP o, si las tiene, que incluyan este dominio.</li>
+                     <li>Esté asociada a un proyecto con la facturación habilitada.</li>
+                </ul>
             </AlertDescription>
         </Alert>
     </div>
