@@ -31,6 +31,10 @@ function GoogleMapClient({
     zoom: 15,
   }
 
+  if (!apiKey) {
+    return <MissingApiKeyCard />;
+  }
+
   return (
     <APIProvider apiKey={apiKey}>
       <Map
