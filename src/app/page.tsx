@@ -14,17 +14,6 @@ import type { SosAlert } from "@/components/AppShell";
 import { AlertCircle, Loader } from "lucide-react";
 
 
-const placeholderAlert: SosAlert = {
-    id: "placeholder",
-    userId: "system",
-    userName: "Sistema de Vigilancia",
-    userAvatarUrl: "",
-    message: "Aún no hay alertas activas en tu red. Cuando se envíe una, aparecerá aquí. Utiliza el botón de SOS para reportar una incidencia.",
-    category: "Robo",
-    location: "Tu Vecindario",
-    timestamp: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
-};
-
 function DashboardContent() {
     const { user, firestore, isUserLoading } = useFirebase();
 
@@ -34,41 +23,18 @@ function DashboardContent() {
     );
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
 
-    const userGroupsQuery = useMemoFirebase(
-        () => (user && firestore ? collection(firestore, `users/${user.uid}/groups`) : null),
-        [user, firestore]
-    );
-    const { data: userGroups, isLoading: isLoadingGroups } = useCollection<UserGroup>(userGroupsQuery);
-    
-    const audience = useMemo(() => {
-        const aud: string[] = [];
-        if (userProfile?.postalCode) {
-            aud.push(userProfile.postalCode);
-        }
-        if (userGroups && userGroups.length > 0) {
-            aud.push(...userGroups.map(g => g.id));
-        }
-        // Add a general audience for family alerts
-        aud.push('family');
-        return aud;
-    }, [userProfile, userGroups]);
-
-
     const alertsQuery = useMemoFirebase(() => {
-        if (!firestore || audience.length === 0) return null;
+        if (!user || !firestore) return null;
         return query(
-            collection(firestore, "sos-alerts"),
-            where('audience', 'array-contains-any', audience),
+            collection(firestore, 'users', user.uid, 'alert-feed'),
             limit(1)
         );
-    }, [firestore, audience]);
+    }, [user, firestore]);
 
     const { data: alerts, isLoading: isLoadingAlerts } = useCollection<SosAlert>(alertsQuery);
 
-    const isLoading = isUserLoading || isProfileLoading || isLoadingGroups || isLoadingAlerts;
+    const isLoading = isUserLoading || isProfileLoading || isLoadingAlerts;
     
-    const activeAlert = alerts && alerts.length > 0 ? alerts[0] : placeholderAlert;
-
     return (
         <div className="space-y-6">
             <div className="space-y-2">
@@ -105,17 +71,26 @@ export default function Home() {
   );
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
 
+  const isLoading = isUserLoading || isProfileLoading;
+
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push("/login");
-    } else if (!isUserLoading && user && !isProfileLoading) {
-      // Only check for postalCode if userProfile is loaded (is not undefined)
-      // A profile that doesn't exist in firestore will result in `null` after loading.
-      if (userProfile === null || (userProfile && !userProfile.postalCode)) {
-        router.push("/welcome");
-      }
+    // Wait until loading is complete before doing any checks
+    if (isLoading) {
+      return;
     }
-  }, [user, isUserLoading, userProfile, isProfileLoading, router]);
+
+    // If loading is done and there's no user, redirect to login
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    // If loading is done and there IS a user, check for postal code
+    // A profile that doesn't exist in firestore will result in `userProfile` being `null` after loading.
+    if (userProfile === null || !userProfile.postalCode) {
+      router.push("/welcome");
+    }
+  }, [user, userProfile, isLoading, router]);
 
   const handleSignOut = async () => {
     if (auth) {
@@ -124,7 +99,6 @@ export default function Home() {
     }
   };
   
-  const isLoading = isUserLoading || isProfileLoading;
 
   if (isLoading || !user) {
     return (
