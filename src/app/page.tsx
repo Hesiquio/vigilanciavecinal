@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useFirebase } from "@/firebase";
@@ -15,12 +14,31 @@ import {
 import { AlertCard } from "@/components/dashboard/AlertCard";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { useCollection, useDoc, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy, limit, where, getDoc, doc } from "firebase/firestore";
+import { collection, query, orderBy, limit, where, doc } from "firebase/firestore";
 import type { SosAlert } from "@/components/AppShell";
 import type { UserProfile, UserGroup } from "@/types";
 
 
+const placeholderAlert: SosAlert = {
+    id: "placeholder-1",
+    userId: "system-user",
+    userName: "Carlos Rodriguez",
+    userAvatarUrl: "https://picsum.photos/seed/2/100/100",
+    timestamp: {
+        seconds: Math.floor(Date.now() / 1000) - 600, // 10 minutes ago
+        nanoseconds: 0
+    },
+    location: "Lat: 19.4326, Lon: -99.1332",
+    message: "Se reporta actividad sospechosa en la Calle Falsa 123. Un individuo con sudadera oscura merodeando los coches.",
+    category: "Personas Sospechosas",
+    status: "active",
+    audience: [],
+};
+
+
 function DashboardContent({ alerts }: { alerts: SosAlert[] }) {
+  const displayAlerts = alerts && alerts.length > 0 ? alerts : [placeholderAlert];
+  
   return (
     <div className="space-y-6">
       <Card>
@@ -28,11 +46,7 @@ function DashboardContent({ alerts }: { alerts: SosAlert[] }) {
           <CardTitle className="text-destructive">Alerta Activa</CardTitle>
         </CardHeader>
         <CardContent>
-          {alerts && alerts.length > 0 ? (
-            <AlertCard alert={alerts[0]} />
-          ) : (
-            <p className="text-sm text-center text-muted-foreground">No hay alertas activas en tu red.</p>
-          )}
+          <AlertCard alert={displayAlerts[0]} />
         </CardContent>
       </Card>
       <RecentActivity />
