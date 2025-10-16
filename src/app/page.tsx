@@ -3,7 +3,7 @@
 
 import { useFirebase } from "@/firebase";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { useDoc, useMemoFirebase } from "@/firebase";
@@ -20,23 +20,24 @@ export default function Home() {
   );
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
 
+  // isLoading is true until both the user and their profile have finished loading.
   const isLoading = isUserLoading || isProfileLoading;
 
   useEffect(() => {
-    // 1. Si aún está cargando, no hagas nada todavía.
+    // 1. If still loading, do nothing yet.
     if (isLoading) {
       return;
     }
 
-    // 2. Si la carga terminó y no hay usuario, redirige al login.
+    // 2. After loading, if there's no user, redirect to login.
     if (!user) {
       router.push("/login");
       return;
     }
     
-    // 3. Si la carga terminó, hay un usuario, pero su perfil no tiene código postal,
-    // entonces y solo entonces, redirige a la página de bienvenida.
-    // Esto previene la redirección prematura antes de que userProfile se cargue.
+    // 3. After loading, if there is a user but their profile is missing the postal code,
+    // then and only then, redirect to the welcome page.
+    // This prevents premature redirection before userProfile is loaded.
     if (userProfile === null || (userProfile && !userProfile.postalCode)) {
       router.push("/welcome");
     }
@@ -51,7 +52,9 @@ export default function Home() {
     }
   };
   
-  if (isLoading || !user || !userProfile) {
+  // Display a loading screen while waiting for auth and profile data.
+  // This also prevents a flash of the dashboard before a redirect can happen.
+  if (isLoading || !userProfile || !userProfile.postalCode) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
         <div className="text-center">
@@ -61,7 +64,7 @@ export default function Home() {
     );
   }
 
-  // Si llegamos aquí, el usuario está logueado y tiene un perfil completo.
+  // If we reach here, the user is logged in and their profile is complete.
   return (
     <AppShell user={user} onSignOut={handleSignOut}>
        <div className="mb-6">
