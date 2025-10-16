@@ -32,12 +32,14 @@ export default function Home() {
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push("/login");
-    } else if (!isUserLoading && user && firestore && !isProfileLoading) {
-        if (!userProfile?.postalCode) {
-            router.push("/welcome");
-        }
+    } else if (!isUserLoading && user && !isProfileLoading) {
+      // Only check for postalCode if userProfile is loaded (not undefined)
+      // A profile that doesn't exist in firestore will be `null` after loading.
+      if (userProfile === null || (userProfile && !userProfile.postalCode)) {
+        router.push("/welcome");
+      }
     }
-  }, [user, isUserLoading, router, firestore, userProfile, isProfileLoading]);
+  }, [user, isUserLoading, userProfile, isProfileLoading, router]);
 
   const handleSignOut = async () => {
     if (auth) {
