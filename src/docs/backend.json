@@ -28,6 +28,10 @@
         "location": {
             "type": "string",
             "description": "The user's last known location as a string 'Lat: XX.XXXX, Lon: YY.YYYY'."
+        },
+        "verificationTimestamp": {
+            "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp",
+            "description": "The timestamp when the user last verified their zone."
         }
       },
       "required": ["name", "email"]
