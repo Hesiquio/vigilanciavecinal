@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from "@/firebase";
@@ -230,13 +230,9 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
       }
   }
 
-  const memberLocations = members
-    ?.filter(m => m.isSharingLocation && m.location)
-    .map(m => {
-        const loc = parseLocation(m.location!);
-        return loc;
-    })
-    .filter(Boolean) as { lat: number; lng: number }[];
+  const userProfileRef = useMemoFirebase(() => (firestore && user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+  const mapCenter = useMemo(() => userProfile?.location ? parseLocation(userProfile.location) : undefined, [userProfile]);
 
 
   if (isUserLoading || isLoadingGroupData || !user || !firestore) {
@@ -276,7 +272,7 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
                 </CardHeader>
                 <CardContent>
                     <div className="relative h-64 w-full rounded-lg overflow-hidden mb-4">
-                        <LeafletMapComponent markers={memberLocations} />
+                        <LeafletMapComponent center={mapCenter} />
                     </div>
                      <div className="flex items-center space-x-2">
                         <Switch 

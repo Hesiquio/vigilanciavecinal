@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { AppShell } from "@/components/AppShell";
@@ -169,13 +169,7 @@ export default function FamilyPage() {
   );
   const { data: familyMembers, isLoading: isLoadingFamily } = useCollection<FamilyMember>(familyQuery);
 
-  const userProfileQuery = useMemoFirebase(
-    () => (firestore && user ? collection(firestore, 'users') : null),
-    [firestore, user]
-  );
-  const { data: userProfiles } = useCollection<UserProfile>(userProfileQuery);
-
-  const acceptedMemberIds = useMemoFirebase(() => {
+  const acceptedMemberIds = useMemo(() => {
     if (!familyMembers) return user ? [user.uid] : [];
     const acceptedIds = familyMembers.filter(m => m.status === 'accepted').map(m => m.userId);
     if (user) {
@@ -242,15 +236,10 @@ export default function FamilyPage() {
         toast({ title: "Error", description: "No se pudo aceptar la solicitud.", variant: "destructive" });
     }
   };
-
-  const familyLocations = userProfiles
-    ?.filter(p => acceptedMemberIds.includes(p.id) && p.location)
-    .map(p => {
-        const loc = parseLocation(p.location!);
-        return loc;
-    })
-    .filter(Boolean) as { lat: number; lng: number }[];
-
+  
+  const userProfileRef = useMemoFirebase(() => (firestore && user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+  const mapCenter = useMemo(() => userProfile?.location ? parseLocation(userProfile.location) : undefined, [userProfile]);
 
   if (isUserLoading || !user || !firestore) {
     return (
@@ -296,7 +285,7 @@ export default function FamilyPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="relative h-64 w-full rounded-lg overflow-hidden">
-                        <LeafletMapComponent markers={familyLocations} />
+                        <LeafletMapComponent center={mapCenter} />
                     </div>
                 </CardContent>
             </Card>

@@ -5,13 +5,11 @@ import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Manually import icon images to prevent build issues with Next.js
+// Configuración de iconos por defecto de Leaflet para que funcione con Next.js
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
-// This is the correct way to fix the icon path issue.
-// It should be done only once, at the module level.
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: markerIcon2x.src,
@@ -20,23 +18,16 @@ L.Icon.Default.mergeOptions({
 });
 
 
-type MarkerData = {
-    lat: number;
-    lng: number;
-};
-
 type LeafletMapComponentProps = {
   center?: { lat: number; lng: number };
-  markerPosition?: MarkerData;
-  markers?: MarkerData[];
+  markerPosition?: { lat: number; lng: number }; // A single marker for simplicity
 };
 
-const LeafletMapComponent = ({ center, markerPosition, markers }: LeafletMapComponentProps) => {
+const LeafletMapComponent = ({ center, markerPosition }: LeafletMapComponentProps) => {
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
 
-    const allMarkersData = (markers || []).concat(markerPosition ? [markerPosition] : []);
-    const initialCenter = center || (allMarkersData.length > 0 ? allMarkersData[0] : undefined) || { lat: 19.4326, lng: -99.1332 };
+    const initialCenter = center || markerPosition || { lat: 19.4326, lng: -99.1332 };
 
     useEffect(() => {
         // Cleanup previous map instance if it exists
@@ -46,7 +37,7 @@ const LeafletMapComponent = ({ center, markerPosition, markers }: LeafletMapComp
             mapInstanceRef.current = null;
         }
 
-        if (mapRef.current) { // Check if the ref is attached
+        if (mapRef.current) {
             const map = L.map(mapRef.current).setView(initialCenter, 15);
             mapInstanceRef.current = map;
 
@@ -54,28 +45,14 @@ const LeafletMapComponent = ({ center, markerPosition, markers }: LeafletMapComp
                 attribution: '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             }).addTo(map);
             
-            // Add new markers
-            allMarkersData.forEach(pos => {
-              if (pos && typeof pos.lat === 'number' && typeof pos.lng === 'number') {
-                L.marker([pos.lat, pos.lng]).addTo(map);
-              } else {
-                console.error('Se detectaron datos de posición inválidos:', pos);
-              }
-            });
-
-             const validMarkers = allMarkersData.filter(m => m && typeof m.lat === 'number' && typeof m.lng === 'number');
-
-             if (validMarkers.length > 1) {
-                const bounds = L.latLngBounds(validMarkers.map(m => [m.lat, m.lng]));
-                if (bounds.isValid()) {
-                    map.fitBounds(bounds, { padding: [50, 50] });
-                }
-            } else if (center) {
+            if (markerPosition && typeof markerPosition.lat === 'number' && typeof markerPosition.lng === 'number') {
+                L.marker([markerPosition.lat, markerPosition.lng]).addTo(map);
+            }
+             if (center) {
                 map.setView([center.lat, center.lng], 15);
             }
         }
 
-        // The cleanup function for when the component unmounts or deps change
         return () => {
             if (mapInstanceRef.current) {
                 mapInstanceRef.current.off();
@@ -83,12 +60,10 @@ const LeafletMapComponent = ({ center, markerPosition, markers }: LeafletMapComp
                 mapInstanceRef.current = null;
             }
         };
-
-    }, [center, markers, markerPosition]); // Re-run effect if these props change
+    }, [center, markerPosition]);
 
 
     return <div ref={mapRef} style={{ height: '100%', width: '100%' }} />;
 };
 
 export default LeafletMapComponent;
-
