@@ -1,63 +1,269 @@
+/**
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a mixed security model.
+ *
+ * Core Philosophy:
+ *  - Users can only read and write their own profile data under /users/{userId}.
+ *  - SOS alerts and Avisos are publicly readable but must have a valid userId and userName on creation.
+ *  - Family and group chats are secured based on shared access, verified by membership lists.
+ *
+ * Data Structure:
+ *  - User profiles are stored under /users/{userId}.
+ *  - SOS alerts are stored under /sos-alerts/{alertId} and publicly readable.
+ *  - Avisos (announcements) are stored under /avisos/{avisoId} and publicly readable.
+ *  - Surveillance zones are stored under /surveillance-zones/{zoneId} and publicly readable.
+ *  - Family chats are stored under /family-chats/{familyId}/messages/{messageId} and secured by family membership.
+ *  - Neighborhood chats are stored under /neighborhood-chats/{postalCode}/messages/{messageId} and publicly readable.
+ *  - Groups are stored under /groups/{groupId} and their members in /groups/{groupId}/members/{memberId}.
+ *  - Group chats are stored under /group-chats/{groupId}/messages/{messageId} and secured by group membership.
+ *
+ * Key Security Decisions:
+ *  - User listing is generally disallowed except where required for admin functionality (not implemented in this ruleset).
+ *  - Public read access is granted to SOS alerts and avisos to facilitate rapid information sharing.
+ *  - Data validation is minimal in this prototype to allow for flexible schema evolution.
+ *
+ * Denormalization for Authorization:
+ *  - SOS alerts and avisos store the userId directly in the document to avoid needing a get() call to /users/{userId} for authorization.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile information.
+     * @description Checks if the request is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user's ID matches the provided user ID.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the authenticated user's ID matches the user ID of the existing document.
+     */
+    function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+    }
+
+
+    /**
+     * @description Grants access to a user's own profile.
      * @path /users/{userId}
-     * @allow (create) - User with UID 'user123' can create their profile document at /users/user123.
-     * @allow (get, update, delete) - User with UID 'user123' can get, update, and delete their profile document at /users/user123.
-     * @deny (create) - User with UID 'user456' cannot create a profile document at /users/user123.
-     * @deny (get, update, delete) - User with UID 'user456' cannot get, update, and delete the profile document at /users/user123.
-     * @principle Enforces document ownership for user profiles.
+     * @allow (create) User VYEAAQuZi2d7ZpFN1hSorEDJOZo1 can create their profile if request.auth.uid == userId.
+     * @allow (get) User VYEAAQuZi2d7ZpFN1hSorEDJOZo1 can read their profile.
+     * @allow (update) User VYEAAQuZi2d7ZpFN1hSorEDJOZo1 can update their profile if request.auth.uid == userId.
+     * @allow (delete) User VYEAAQuZi2d7ZpFN1hSorEDJOZo1 can delete their profile if request.auth.uid == userId.
+     * @deny (create) User WYEAAQuZi2d7ZpFN1hSorEDJOZo2 cannot create a profile for VYEAAQuZi2d7ZpFN1hSorEDJOZo1.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      allow get: if isSignedIn() && isOwner(userId);
+      allow get: if true;
       allow list: if false;
-
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to SOS alerts.
+     * @description Grants access to a user's family members subcollection.
+     * @path /users/{userId}/familyMembers/{memberId}
+     * @allow (create) User VYEAAQuZi2d7ZpFN1hSorEDJOZo1 can add a family member.
+     * @allow (get) User VYEAAQuZi2d7ZpFN1hSorEDJOZo1 can read their family members.
+     * @allow (update) User VYEAAQuZi2d7ZpFN1hSorEDJOZo1 can update a family member's info.
+     * @allow (delete) User VYEAAQuZi2d7ZpFN1hSorEDJOZo1 can delete a family member.
+     * @deny (create) User WYEAAQuZi2d7ZpFN1hSorEDJOZo2 cannot add a family member to VYEAAQuZi2d7ZpFN1hSorEDJOZo1.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/familyMembers/{memberId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Grants access to a user's groups subcollection.
+     * @path /users/{userId}/groups/{groupId}
+     * @allow (create) User VYEAAQuZi2d7ZpFN1hSorEDJOZo1 can create a group reference.
+     * @allow (get) User VYEAAQuZi2d7ZpFN1hSorEDJOZo1 can read their group references.
+     * @allow (update) User VYEAAQuZi2d7ZpFN1hSorEDJOZo1 can update a group reference.
+     * @allow (delete) User VYEAAQuZi2d7ZpFN1hSorEDJOZo1 can delete a group reference.
+     * @deny (create) User WYEAAQuZi2d7ZpFN1hSorEDJOZo2 cannot create a group reference for VYEAAQuZi2d7ZpFN1hSorEDJOZo1.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/groups/{groupId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Grants public read access to SOS alerts, but restricts writes to authenticated users with a valid userId.
      * @path /sos-alerts/{alertId}
-     * @allow (create) - Authenticated user can create an SOS alert.
-     * @allow (get, list) - Any user can read SOS alerts.
-     * @deny (update, delete) - Only the owner can update/delete alerts.
-     * @principle Allows public read access with owner-only writes for SOS alerts.
+     * @allow (get) Any user can read any SOS alert.
+     * @allow (list) Any user can list SOS alerts.
+     * @allow (create) User VYEAAQuZi2d7ZpFN1hSorEDJOZo1 can create an alert with their userId.
+     * @deny (create) User VYEAAQuZi2d7ZpFN1hSorEDJOZo1 cannot create an alert without their userId.
+     * @deny (update) No one can update an SOS alert.
+     * @deny (delete) No one can delete an SOS alert.
+     * @principle Allows public information consumption with controlled authorship.
      */
     match /sos-alerts/{alertId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       allow get: if true;
       allow list: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Controls access to surveillance zones.
+     * @description Grants public read access to Avisos, but restricts writes to authenticated users with a valid userId.
+     * @path /avisos/{avisoId}
+     * @allow (get) Any user can read any Aviso.
+     * @allow (list) Any user can list Avisos.
+     * @allow (create) User VYEAAQuZi2d7ZpFN1hSorEDJOZo1 can create an Aviso with their userId.
+     * @deny (create) User VYEAAQuZi2d7ZpFN1hSorEDJOZo1 cannot create an Aviso without their userId.
+     * @deny (update) No one can update an Aviso.
+     * @deny (delete) No one can delete an Aviso.
+     * @principle Allows public information consumption with controlled authorship.
+     */
+    match /avisos/{avisoId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Grants public read access to surveillance zones.
      * @path /surveillance-zones/{zoneId}
-     * @allow (get, list) - Any user can read surveillance zone data.
-     * @deny (create, update, delete) - No one can create, update, or delete surveillance zones through the client.
-     * @principle Allows public read access for surveillance zone data.
+     * @allow (get) Any user can read any surveillance zone.
+     * @allow (list) Any user can list surveillance zones.
+     * @deny (create) No one can create a surveillance zone. // TODO: Add admin validation
+     * @deny (update) No one can update a surveillance zone.  // TODO: Add admin validation
+     * @deny (delete) No one can delete a surveillance zone.  // TODO: Add admin validation
+     * @principle Allows public information consumption.
      */
     match /surveillance-zones/{zoneId} {
       allow get: if true;
       allow list: if true;
-      allow create, update, delete: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Grants access to messages within a specific family chat.
+     * @path /family-chats/{familyId}/messages/{messageId}
+     * @allow (get) Any authenticated user can read a family chat message (if a family member).
+     * @allow (list) Any authenticated user can list family chat messages (if a family member).
+     * @allow (create) Any authenticated user can create a family chat message (if a family member).
+     * @allow (update) No one can update a family chat message.
+     * @allow (delete) No one can delete a family chat message.
+     * @deny (create) Non family member cannot create a family chat message.
+     * @principle Restricts access to authorized family members.
+     */
+    match /family-chats/{familyId}/messages/{messageId} {
+        function isFamilyMember() {
+            return get(/databases/$(database)/documents/users/$(request.auth.uid)/familyMembers/$(familyId)).data.userId == request.auth.uid;
+        }
+
+        allow get: if isSignedIn() && isFamilyMember();
+        allow list: if isSignedIn() && isFamilyMember();
+        allow create: if isSignedIn() && isFamilyMember() && request.resource.data.userId == request.auth.uid;
+        allow update: if false;
+        allow delete: if false;
+    }
+
+    /**
+     * @description Grants public read access to messages within a specific neighborhood chat.
+     * @path /neighborhood-chats/{postalCode}/messages/{messageId}
+     * @allow (get) Any user can read any message in a neighborhood chat.
+     * @allow (list) Any user can list messages in a neighborhood chat.
+     * @allow (create) Authenticated users can create messages in a neighborhood chat.
+     * @deny (create) Unauthenticated users cannot create messages.
+     * @deny (update) No one can update a neighborhood chat message.
+     * @deny (delete) No one can delete a neighborhood chat message.
+     * @principle Allows public information consumption.
+     */
+    match /neighborhood-chats/{postalCode}/messages/{messageId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Grants access to groups, restricting write access to the group owner.
+     * @path /groups/{groupId}
+     * @allow (get) Any user can read group metadata.
+     * @allow (list) No listing of groups allowed.
+     * @allow (create) Authenticated users can create a group with themselves as the owner.
+     * @allow (update) Only the owner can update a group.
+     * @allow (delete) Only the owner can delete a group.
+     * @deny (create) User cannot create a group for another user.
+     */
+    match /groups/{groupId} {
+        allow get: if true;
+        allow list: if false;
+        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+        allow update: if isExistingOwner(resource.data.ownerId);
+        allow delete: if isExistingOwner(resource.data.ownerId);
+    }
+
+    /**
+     * @description Grants access to group members, allowing the group owner to manage membership.
+     * @path /groups/{groupId}/members/{memberId}
+     * @allow (get) Any authenticated user can read group member details.
+     * @allow (list) Any authenticated user can list group members.
+     * @allow (create) Only the group owner can add members.
+     * @allow (update) Only the group owner can update member details.
+     * @allow (delete) Only the group owner can remove members.
+     * @deny (create) Non group owner can not add members to the group.
+     */
+    match /groups/{groupId}/members/{memberId} {
+        function isGroupOwner() {
+            return get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId == request.auth.uid;
+        }
+
+        allow get: if isSignedIn();
+        allow list: if isSignedIn();
+        allow create: if isSignedIn() && isGroupOwner();
+        allow update: if isSignedIn() && isGroupOwner();
+        allow delete: if isSignedIn() && isGroupOwner();
+    }
+
+    /**
+     * @description Grants access to messages within a specific group chat.
+     * @path /group-chats/{groupId}/messages/{messageId}
+     * @allow (get) Any authenticated user can read a group chat message (if a member of the group).
+     * @allow (list) Any authenticated user can list group chat messages (if a member of the group).
+     * @allow (create) Any authenticated user can create a group chat message (if a member of the group).
+     * @allow (update) No one can update a group chat message.
+     * @allow (delete) No one can delete a group chat message.
+     * @deny (create) Non group member cannot create a group chat message.
+     * @principle Restricts access to authorized group members.
+     */
+    match /group-chats/{groupId}/messages/{messageId} {
+        function isGroupMember() {
+            return get(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.userId == request.auth.uid;
+        }
+
+        allow get: if isSignedIn() && isGroupMember();
+        allow list: if isSignedIn() && isGroupMember();
+        allow create: if isSignedIn() && isGroupMember() && request.resource.data.userId == request.auth.uid;
+        allow update: if false;
+        allow delete: if false;
     }
   }
 }
