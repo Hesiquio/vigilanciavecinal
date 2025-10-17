@@ -234,10 +234,9 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
     ?.filter(m => m.isSharingLocation && m.location)
     .map(m => {
         const loc = parseLocation(m.location!);
-        if (!loc) return null;
-        return { ...loc, label: m.name.split(' ')[0] }; // Use first name as label
+        return loc;
     })
-    .filter(Boolean) as { lat: number; lng: number, label: string }[];
+    .filter(Boolean) as { lat: number; lng: number }[];
 
 
   if (isUserLoading || isLoadingGroupData || !user || !firestore) {

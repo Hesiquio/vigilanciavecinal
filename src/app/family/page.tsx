@@ -247,10 +247,9 @@ export default function FamilyPage() {
     ?.filter(p => acceptedMemberIds.includes(p.id) && p.location)
     .map(p => {
         const loc = parseLocation(p.location!);
-        if (!loc) return null;
-        return { ...loc, label: p.name.split(' ')[0] }; // Use first name as label
+        return loc;
     })
-    .filter(Boolean) as { lat: number; lng: number, label: string }[];
+    .filter(Boolean) as { lat: number; lng: number }[];
 
 
   if (isUserLoading || !user || !firestore) {
@@ -365,5 +364,3 @@ export default function FamilyPage() {
     </AppShell>
   );
 }
-
-    
