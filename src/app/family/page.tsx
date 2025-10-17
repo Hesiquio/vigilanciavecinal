@@ -190,7 +190,7 @@ export default function FamilyPage() {
         orderBy("timestamp", "desc"),
         limit(1)
     );
-  }, [firestore, acceptedMemberIds]);
+  }, [firestore, acceptedMemberIds.length]);
   const { data: familyAlerts, isLoading: isLoadingAlerts } = useCollection<SosAlert>(familyAlertsQuery);
 
 
