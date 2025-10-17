@@ -175,11 +175,14 @@ export default function FamilyPage() {
   );
   const { data: userProfiles } = useCollection<UserProfile>(userProfileQuery);
 
-  const acceptedFamilyMembers = familyMembers?.filter(m => m.status === 'accepted') || [];
-  const acceptedMemberIds = acceptedFamilyMembers.map(m => m.userId);
-  if (user && !acceptedMemberIds.includes(user.uid)) {
-      acceptedMemberIds.push(user.uid);
-  }
+  const acceptedMemberIds = useMemoFirebase(() => {
+    if (!familyMembers) return user ? [user.uid] : [];
+    const acceptedIds = familyMembers.filter(m => m.status === 'accepted').map(m => m.userId);
+    if (user) {
+        acceptedIds.push(user.uid);
+    }
+    return acceptedIds;
+  }, [familyMembers, user]);
 
 
   const familyAlertsQuery = useMemoFirebase(() => {
@@ -190,7 +193,7 @@ export default function FamilyPage() {
         orderBy("timestamp", "desc"),
         limit(1)
     );
-  }, [firestore, acceptedMemberIds.length]);
+  }, [firestore, acceptedMemberIds]);
   const { data: familyAlerts, isLoading: isLoadingAlerts } = useCollection<SosAlert>(familyAlertsQuery);
 
 
@@ -362,3 +365,5 @@ export default function FamilyPage() {
     </AppShell>
   );
 }
+
+    
