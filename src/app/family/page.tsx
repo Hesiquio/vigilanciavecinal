@@ -177,6 +177,10 @@ export default function FamilyPage() {
 
   const acceptedFamilyMembers = familyMembers?.filter(m => m.status === 'accepted') || [];
   const acceptedMemberIds = acceptedFamilyMembers.map(m => m.userId);
+  if (user && !acceptedMemberIds.includes(user.uid)) {
+      acceptedMemberIds.push(user.uid);
+  }
+
 
   const familyAlertsQuery = useMemoFirebase(() => {
     if (!firestore || acceptedMemberIds.length === 0) return null;
