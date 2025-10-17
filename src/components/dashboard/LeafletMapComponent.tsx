@@ -56,13 +56,17 @@ const LeafletMapComponent = ({ center, markerPosition, markers }: LeafletMapComp
             
             // Add new markers
             allMarkersData.forEach(pos => {
-              if (pos) {
+              if (pos && typeof pos.lat === 'number' && typeof pos.lng === 'number') {
                 L.marker([pos.lat, pos.lng]).addTo(map);
+              } else {
+                console.error('Se detectaron datos de posición inválidos:', pos);
               }
             });
 
-             if (allMarkersData.length > 1) {
-                const bounds = L.latLngBounds(allMarkersData.map(m => [m.lat, m.lng]));
+             const validMarkers = allMarkersData.filter(m => m && typeof m.lat === 'number' && typeof m.lng === 'number');
+
+             if (validMarkers.length > 1) {
+                const bounds = L.latLngBounds(validMarkers.map(m => [m.lat, m.lng]));
                 if (bounds.isValid()) {
                     map.fitBounds(bounds, { padding: [50, 50] });
                 }
@@ -87,3 +91,4 @@ const LeafletMapComponent = ({ center, markerPosition, markers }: LeafletMapComp
 };
 
 export default LeafletMapComponent;
+
