@@ -1,10 +1,9 @@
 
 "use client";
 
-import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useEffect, useRef } from 'react';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 // Fix for default icon issues with webpack
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -25,54 +24,75 @@ type LeafletMapComponentProps = {
   markers?: { lat: number; lng: number }[];
 };
 
-/**
- * A component to handle map updates imperatively.
- * This prevents the MapContainer from re-rendering.
- */
-const MapUpdater = ({ center, markerPosition, markers }: LeafletMapComponentProps) => {
-  const map = useMap();
+const LeafletMapComponent = ({ center, markerPosition, markers }: LeafletMapComponentProps) => {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
 
   useEffect(() => {
-    if (center) {
-      map.setView(center, map.getZoom() || 15);
-    } else if (markerPosition) {
-        map.setView(markerPosition, map.getZoom() || 15);
-    } else if (markers && markers.length > 0) {
-        const bounds = L.latLngBounds(markers);
-        if(bounds.isValid()) {
+    if (!mapContainerRef.current) return;
+    
+    // Determine the initial center for the map
+    const initialCenter = center || markerPosition || (markers && markers.length > 0 ? markers[0] : undefined) || { lat: 19.4326, lng: -99.1332 };
+
+    // --- Cleanup logic as per your expert suggestion ---
+    // If a map instance already exists, remove it before creating a new one.
+    if (mapRef.current) {
+      mapRef.current.off();
+      mapRef.current.remove();
+      mapRef.current = null;
+    }
+    
+    // Create the new map instance
+    const map = L.map(mapContainerRef.current).setView(initialCenter, 15);
+    mapRef.current = map;
+
+    L.tileLayer(
+        `https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`,
+        {
+            attribution: '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }
+    ).addTo(map);
+
+    const allMarkers: { lat: number; lng: number }[] = [];
+    if (markerPosition) {
+        allMarkers.push(markerPosition);
+    }
+    if (markers) {
+        allMarkers.push(...markers);
+    }
+    
+    const markerInstances: L.Marker[] = [];
+    allMarkers.forEach(pos => {
+      if (pos) {
+        const marker = L.marker([pos.lat, pos.lng]).addTo(map);
+        markerInstances.push(marker);
+      }
+    });
+
+    if (markerInstances.length > 1) {
+        const bounds = L.latLngBounds(markerInstances.map(m => m.getLatLng()));
+        if (bounds.isValid()) {
             map.fitBounds(bounds, { padding: [50, 50] });
         }
+    } else if (markerInstances.length === 1) {
+        map.setView(markerInstances[0].getLatLng(), 15);
+    } else if (center) {
+        map.setView(center, 15);
     }
-  }, [center, markerPosition, markers, map]);
+
+    // --- Definitive cleanup function on component unmount ---
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.off();
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  // We include all props in the dependency array to re-initialize the map when data changes.
+  // The cleanup function will prevent the "already initialized" error.
+  }, [center, markerPosition, markers]); 
   
-  return (
-    <>
-      {markerPosition && <Marker position={markerPosition}></Marker>}
-      {markers && markers.map((pos, idx) => (
-        <Marker key={idx} position={pos}></Marker>
-      ))}
-    </>
-  );
-}
-
-
-/**
- * The main map component. It renders the MapContainer once and uses
- * MapUpdater to handle all dynamic changes to markers and view.
- */
-const LeafletMapComponent = ({ center, markerPosition, markers }: LeafletMapComponentProps) => {
-  // Determine an initial center to instantiate the map. It won't be updated via props here.
-  const initialCenter = center || markerPosition || (markers && markers.length > 0 ? markers[0] : undefined) || { lat: 19.4326, lng: -99.1332 };
-
-  return (
-    <MapContainer center={initialCenter} zoom={15} style={{ height: '100%', width: '100%' }}>
-      <TileLayer
-        url={`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`}
-        attribution='&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-      />
-      <MapUpdater center={center} markerPosition={markerPosition} markers={markers} />
-    </MapContainer>
-  );
+  return <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />;
 };
 
 export default LeafletMapComponent;
