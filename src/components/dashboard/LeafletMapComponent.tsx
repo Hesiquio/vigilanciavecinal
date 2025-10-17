@@ -19,6 +19,12 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow.src,
 });
 
+type LeafletMapComponentProps = {
+  center?: { lat: number; lng: number };
+  markerPosition?: { lat: number; lng: number };
+  markers?: { lat: number; lng: number }[];
+};
+
 /**
  * A component to handle map updates imperatively.
  * This prevents the MapContainer from re-rendering.
@@ -49,11 +55,6 @@ const MapUpdater = ({ center, markerPosition, markers }: LeafletMapComponentProp
   );
 }
 
-type LeafletMapComponentProps = {
-  center?: { lat: number; lng: number };
-  markerPosition?: { lat: number; lng: number };
-  markers?: { lat: number; lng: number }[];
-};
 
 /**
  * The main map component. It renders the MapContainer once and uses
