@@ -18,6 +18,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow.src,
 });
 
+
 type MarkerData = {
     lat: number;
     lng: number;
