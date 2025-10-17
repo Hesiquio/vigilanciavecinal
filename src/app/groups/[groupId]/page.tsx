@@ -232,8 +232,12 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
 
   const memberLocations = members
     ?.filter(m => m.isSharingLocation && m.location)
-    .map(m => parseLocation(m.location!))
-    .filter(Boolean) as { lat: number; lng: number }[];
+    .map(m => {
+        const loc = parseLocation(m.location!);
+        if (!loc) return null;
+        return { ...loc, label: m.name.split(' ')[0] }; // Use first name as label
+    })
+    .filter(Boolean) as { lat: number; lng: number, label: string }[];
 
 
   if (isUserLoading || isLoadingGroupData || !user || !firestore) {

@@ -18,10 +18,16 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow.src,
 });
 
+type MarkerData = {
+    lat: number;
+    lng: number;
+    label?: string;
+};
+
 type LeafletMapComponentProps = {
   center?: { lat: number; lng: number };
-  markerPosition?: { lat: number; lng: number };
-  markers?: { lat: number; lng: number }[];
+  markerPosition?: MarkerData;
+  markers?: MarkerData[];
 };
 
 const LeafletMapComponent = ({ center, markerPosition, markers }: LeafletMapComponentProps) => {
@@ -31,18 +37,23 @@ const LeafletMapComponent = ({ center, markerPosition, markers }: LeafletMapComp
   useEffect(() => {
     if (!mapContainerRef.current) return;
     
-    // Determine the initial center for the map
-    const initialCenter = center || markerPosition || (markers && markers.length > 0 ? markers[0] : undefined) || { lat: 19.4326, lng: -99.1332 };
-
-    // --- Cleanup logic as per your expert suggestion ---
-    // If a map instance already exists, remove it before creating a new one.
+    // Cleanup previous map instance
     if (mapRef.current) {
       mapRef.current.off();
       mapRef.current.remove();
       mapRef.current = null;
     }
     
-    // Create the new map instance
+    const allMarkersData: MarkerData[] = [];
+    if (markerPosition) {
+        allMarkersData.push(markerPosition);
+    }
+    if (markers) {
+        allMarkersData.push(...markers);
+    }
+
+    const initialCenter = center || (allMarkersData.length > 0 ? allMarkersData[0] : undefined) || { lat: 19.4326, lng: -99.1332 };
+
     const map = L.map(mapContainerRef.current).setView(initialCenter, 15);
     mapRef.current = map;
 
@@ -53,18 +64,13 @@ const LeafletMapComponent = ({ center, markerPosition, markers }: LeafletMapComp
         }
     ).addTo(map);
 
-    const allMarkers: { lat: number; lng: number }[] = [];
-    if (markerPosition) {
-        allMarkers.push(markerPosition);
-    }
-    if (markers) {
-        allMarkers.push(...markers);
-    }
-    
     const markerInstances: L.Marker[] = [];
-    allMarkers.forEach(pos => {
+    allMarkersData.forEach(pos => {
       if (pos) {
         const marker = L.marker([pos.lat, pos.lng]).addTo(map);
+        if (pos.label) {
+            marker.bindTooltip(pos.label, { permanent: true, direction: 'top', offset: [0, -15], className: 'map-label' }).openTooltip();
+        }
         markerInstances.push(marker);
       }
     });
@@ -80,7 +86,7 @@ const LeafletMapComponent = ({ center, markerPosition, markers }: LeafletMapComp
         map.setView(center, 15);
     }
 
-    // --- Definitive cleanup function on component unmount ---
+    // Cleanup on component unmount
     return () => {
       if (mapRef.current) {
         mapRef.current.off();
@@ -88,8 +94,6 @@ const LeafletMapComponent = ({ center, markerPosition, markers }: LeafletMapComp
         mapRef.current = null;
       }
     };
-  // We include all props in the dependency array to re-initialize the map when data changes.
-  // The cleanup function will prevent the "already initialized" error.
   }, [center, markerPosition, markers]); 
   
   return <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />;

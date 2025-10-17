@@ -238,8 +238,12 @@ export default function FamilyPage() {
 
   const familyLocations = userProfiles
     ?.filter(p => acceptedMemberIds.includes(p.id) && p.location)
-    .map(p => parseLocation(p.location!))
-    .filter(Boolean) as { lat: number; lng: number }[];
+    .map(p => {
+        const loc = parseLocation(p.location!);
+        if (!loc) return null;
+        return { ...loc, label: p.name.split(' ')[0] }; // Use first name as label
+    })
+    .filter(Boolean) as { lat: number; lng: number, label: string }[];
 
 
   if (isUserLoading || !user || !firestore) {
