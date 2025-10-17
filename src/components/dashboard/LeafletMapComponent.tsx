@@ -6,9 +6,20 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // Manually import icon images to prevent build issues with Next.js
+// This code runs once when the module is imported.
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+// Fix for default icon path issue with Webpack
+// This should be done only once, and it's done here at the module level.
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: markerIcon2x.src,
+    iconUrl: markerIcon.src,
+    shadowUrl: markerShadow.src,
+});
+
 
 type MarkerData = {
     lat: number;
@@ -35,15 +46,6 @@ const LeafletMapComponent = ({ center, markerPosition, markers }: LeafletMapComp
             mapInstanceRef.current.remove();
             mapInstanceRef.current = null;
         }
-        
-        // Fix for default icon path issue with Webpack
-        // This should be done only once, but placing it here ensures it's set before map creation
-        delete (L.Icon.Default.prototype as any)._getIconUrl;
-        L.Icon.Default.mergeOptions({
-            iconRetinaUrl: markerIcon2x.src,
-            iconUrl: markerIcon.src,
-            shadowUrl: markerShadow.src,
-        });
 
         const allMarkersData: MarkerData[] = [];
         if (markerPosition) allMarkersData.push(markerPosition);
@@ -60,6 +62,7 @@ const LeafletMapComponent = ({ center, markerPosition, markers }: LeafletMapComp
 
         allMarkersData.forEach(pos => {
             if (pos) {
+                // Use the default icon, which is now correctly configured at the module level.
                 const marker = L.marker([pos.lat, pos.lng]).addTo(map);
                 if (pos.label) {
                     marker.bindTooltip(pos.label, { permanent: true, direction: 'top', offset: [0, -15], className: 'map-label' }).openTooltip();
