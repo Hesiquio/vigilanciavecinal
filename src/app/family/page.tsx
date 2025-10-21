@@ -196,60 +196,21 @@ export default function FamilyPage() {
   const { data: familyMembers, isLoading: isLoadingFamily } = useCollection<FamilyMember>(familyQuery);
 
   const userProfileRef = useMemoFirebase(() => (firestore && user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
-  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
-  // This state is a bit tricky. The user's choice to share location is not on their own profile,
-  // but on the 'family member' document that OTHER users have for them.
-  // To know if the user is *currently* sharing, we would need to query another user's subcollection, which is complex.
-  // Instead, we can determine the state of the switch by looking at our OWN `familyMembers` documents.
-  // If we have at least one accepted family member with whom we are sharing our location, the switch should be on.
-  // This is a reasonable approximation of the user's intent.
   const isCurrentUserSharing = useMemo(() => {
-    if (!familyMembers) return false;
-    // Find our own entry in our family list to see our preference.
-    // This is a proxy. The real source of truth is distributed.
-    // Let's check if the current user is sharing their location with at least one accepted family member.
-    // When the user toggles the switch, we will update their `isSharingLocation` status
-    // on all *other* family members' documents.
-    // To determine the switch state, we find our own "member" document in an accepted family member's list.
-    // This is hard. Let's simplify.
-    // We'll base the state on whether our own `familyMembers` list contains anyone with whom we are sharing.
-    // This still feels backward.
-
-    // Let's try this: when a user toggles the switch, we write `isSharingLocation` to a field on THEIR OWN
-    // user profile document. e.g., `isSharingLocationWithFamily`.
-    // Then, other family members can read this field. This centralizes the preference.
-    // For now, let's implement the `handleLocationSharingChange` to update OTHERS.
-    // And to determine the state, we can't easily. So let's make an assumption.
-    // We can't easily check our status on other's documents.
-    // So let's check our *own* member entries. The `isSharingLocation` on `users/{myId}/familyMembers/{theirId}`
-    // actually represents if THEY are sharing with ME.
-    // A better structure would have been a single `families` collection.
-
-    // OK, new plan for the switch state. When we fetch family members, we get THEIR status.
-    // We cannot easily get OUR status on THEIR device.
-    // Let's assume the switch reflects the user's INTENTION to share. We can't reliably read the current state.
-    // Let's find out if there's any family member that has the user listed and sharing location.
-    // This requires a query we don't have.
-    // The easiest path forward: The switch state is determined by whether the user's own profile has location data.
-    // When they toggle, we update their location data for all accepted family members.
-    return familyMembers?.some(m => m.status === 'accepted' && m.isSharingLocation) ?? false;
-
-  }, [familyMembers]);
-
+    return userProfile?.isSharingLocationWithFamily ?? false;
+  }, [userProfile]);
 
   const familyMapMarkers = useMemo(() => {
     const markers = [];
-    // User's own location if they are sharing with family.
     if (isCurrentUserSharing && userProfile?.location) {
         const coords = parseLocation(userProfile.location);
         if (coords) markers.push({ ...coords, label: `${user?.displayName?.split(' ')[0] || 'Tú'} (Tú)` });
     }
 
-    // Accepted family members' locations
     if (familyMembers) {
       familyMembers.forEach(member => {
-        // Here, `member.isSharingLocation` means "is this member sharing their location with ME"
         if (member.status === 'accepted' && member.isSharingLocation && member.location) {
           const coords = parseLocation(member.location);
           if (coords) {
@@ -319,32 +280,36 @@ export default function FamilyPage() {
     }
   };
 
-  const handleLocationSharingChange = async (isSharing: boolean) => {
-      if (!firestore || !user || !familyMembers) return;
-      
-      const batch = writeBatch(firestore);
-      const acceptedMembers = familyMembers.filter(m => m.status === 'accepted');
+ const handleLocationSharingChange = async (isSharing: boolean) => {
+    if (!firestore || !user || !userProfileRef || !familyMembers) return;
 
-      // Update the `isSharingLocation` field for the current user in every accepted member's family list
-      acceptedMembers.forEach(member => {
-          // This reference points to my entry in my family member's list
-          const theirFamilyMemberRef = doc(firestore, "users", member.userId, "familyMembers", user.uid);
-          batch.update(theirFamilyMemberRef, { 
-              isSharingLocation: isSharing,
-              location: isSharing ? userProfile?.location : ''
-          });
-      });
+    const batch = writeBatch(firestore);
 
-      try {
-          await batch.commit();
-          toast({ title: "Preferencia guardada", description: `Compartir ubicación ${isSharing ? 'activado' : 'desactivado'}.` });
-      } catch (error) {
-          console.error("Error updating location sharing preference:", error);
-          toast({ title: "Error", description: "No se pudo guardar tu preferencia.", variant: "destructive" });
-      }
-  }
+    // 1. Update the central flag on the user's own profile
+    batch.update(userProfileRef, { isSharingLocationWithFamily: isSharing });
+
+    // 2. Propagate this change to all accepted family members' views of this user
+    const acceptedMembers = familyMembers.filter(m => m.status === 'accepted');
+    acceptedMembers.forEach(member => {
+        // This is the reference to the current user's document inside their family member's subcollection
+        const theirFamilyMemberRef = doc(firestore, "users", member.userId, "familyMembers", user.uid);
+        batch.update(theirFamilyMemberRef, { 
+            isSharingLocation: isSharing,
+            location: isSharing ? userProfile.location : '' 
+        });
+    });
+
+    try {
+        await batch.commit();
+        toast({ title: "Preferencia guardada", description: `Compartir ubicación con familia ${isSharing ? 'activado' : 'desactivado'}.` });
+    } catch (error) {
+        console.error("Error updating location sharing preference:", error);
+        toast({ title: "Error", description: "No se pudo guardar tu preferencia.", variant: "destructive" });
+    }
+};
+
   
-  if (isUserLoading || !user || !firestore) {
+  if (isUserLoading || isProfileLoading || !user || !firestore) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
         <p>Cargando...</p>
@@ -377,7 +342,7 @@ export default function FamilyPage() {
                             id="location-sharing-family"
                             onCheckedChange={handleLocationSharingChange}
                             checked={isCurrentUserSharing}
-                            disabled={isLoadingFamily}
+                            disabled={isLoadingFamily || isProfileLoading}
                          />
                         <Label htmlFor="location-sharing-family">Compartir mi ubicación con mi familia</Label>
                     </div>

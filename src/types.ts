@@ -7,6 +7,7 @@ export type UserProfile = {
   postalCode?: string;
   location?: string;
   verificationTimestamp?: any;
+  isSharingLocationWithFamily?: boolean;
 };
 
 export type FamilyMember = {

@@ -32,6 +32,10 @@
         "verificationTimestamp": {
             "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp",
             "description": "The timestamp when the user last verified their zone."
+        },
+        "isSharingLocationWithFamily": {
+            "type": "boolean",
+            "description": "Whether the user is currently sharing their location with their family."
         }
       },
       "required": ["name", "email"]
