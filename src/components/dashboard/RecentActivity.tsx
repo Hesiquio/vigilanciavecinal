@@ -56,9 +56,13 @@ export function RecentActivity() {
 
         // IDs from neighborhood (postal code)
         if (userProfile?.postalCode) {
-            const usersInNeighborhoodQuery = query(collection(firestore, 'users'), where('postalCode', '==', userProfile.postalCode));
-            const neighborhoodSnapshot = await getDocs(usersInNeighborhoodQuery);
-            neighborhoodSnapshot.forEach(doc => ids.add(doc.id));
+            try {
+                const usersInNeighborhoodQuery = query(collection(firestore, 'users'), where('postalCode', '==', userProfile.postalCode));
+                const neighborhoodSnapshot = await getDocs(usersInNeighborhoodQuery);
+                neighborhoodSnapshot.forEach(doc => ids.add(doc.id));
+            } catch (e) {
+                console.warn("Could not query users by postal code. This might be due to missing Firestore indexes.", e);
+            }
         }
         
         // IDs from groups
@@ -106,9 +110,9 @@ export function RecentActivity() {
   const { data: avisos, isLoading: isLoadingAvisos, error: avisosError } = useCollection<Aviso>(avisosQuery);
 
 
-  const combinedActivity: ActivityItem[] = useMemoFirebase(() => {
-    const typedAlerts: ActivityItem[] = alerts ? alerts.map(a => ({ ...a, type: 'alert' })) : [];
-    const typedAvisos: ActivityItem[] = avisos ? avisos.map(a => ({ ...a, type: 'aviso' })) : [];
+  const combinedActivity: ActivityItem[] = useMemo(() => {
+    const typedAlerts: ActivityItem[] = alerts ? alerts.map(a => ({ ...a, type: 'alert' as const })) : [];
+    const typedAvisos: ActivityItem[] = avisos ? avisos.map(a => ({ ...a, type: 'aviso' as const })) : [];
 
     return [...typedAlerts, ...typedAvisos]
       .filter(item => item.timestamp) // Ensure timestamp is not null
@@ -140,7 +144,7 @@ export function RecentActivity() {
          <div className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-destructive/50 rounded-lg text-destructive">
             <ShieldAlert className="h-8 w-8" />
             <p className="mt-2 text-sm font-semibold">Error al cargar la actividad</p>
-            <p className="text-xs">No se pudieron obtener las alertas o avisos.</p>
+            <p className="text-xs">{hasError.message}</p>
           </div>
       );
     }
