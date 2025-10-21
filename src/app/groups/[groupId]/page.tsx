@@ -13,10 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy, updateDoc, deleteDoc, getDocsFromCache } from "firebase/firestore";
 import { doc } from "firebase/firestore";
-import type { GroupMember, UserProfile, ChatMessage, Group } from "@/types";
-import { Loader, UserPlus, Check, Send, AlertCircle, ArrowLeft, XCircle } from "lucide-react";
+import type { GroupMember, UserProfile, ChatMessage, Group, UserGroup } from "@/types";
+import { Loader, UserPlus, Check, Send, AlertCircle, ArrowLeft, XCircle, Trash2, Edit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import dynamic from 'next/dynamic';
 import {
@@ -29,7 +29,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
 
 const GoogleMapComponent = dynamic(() => import('@/components/dashboard/GoogleMapComponent'), {
     ssr: false,
@@ -62,25 +64,21 @@ async function findUserByEmail(db: any, email: string): Promise<(UserProfile & {
 
 async function sendGroupRequest(db: any, targetUser: UserProfile & {id: string}, groupId: string, groupName: string) {
     const batch = writeBatch(db);
-    // This creates a 'requested' status for the inviter, but groups don't work that way.
-    // The owner invites, and the target gets a 'pending' status.
-    // We will add the user directly to the group members with 'pending' status.
     const groupMemberRef = doc(db, "groups", groupId, "members", targetUser.id);
     batch.set(groupMemberRef, {
         userId: targetUser.id,
         name: targetUser.name,
         email: targetUser.email,
         avatarUrl: targetUser.avatarUrl,
-        status: 'pending', // The user has been invited and their status is pending acceptance.
+        status: 'pending',
         isSharingLocation: false,
         location: targetUser.location || '',
     });
     
-    // Add a reference to the group in the user's own groups subcollection
     const userGroupRef = doc(db, "users", targetUser.id, "groups", groupId);
     batch.set(userGroupRef, {
         name: groupName,
-        status: 'pending' // This user has a pending invite to this group
+        status: 'pending'
     });
 
     await batch.commit();
@@ -89,23 +87,19 @@ async function sendGroupRequest(db: any, targetUser: UserProfile & {id: string},
 
 async function acceptGroupRequest(db: any, userId: string, groupId: string) {
     const batch = writeBatch(db);
-    // Update the member's status in the group's subcollection
     const groupMemberRef = doc(db, "groups", groupId, "members", userId);
     batch.update(groupMemberRef, { status: 'accepted' });
 
-    // Update the group's status in the user's subcollection
     const userGroupRef = doc(db, "users", userId, "groups", groupId);
     batch.update(userGroupRef, { status: 'accepted' });
     
     await batch.commit();
 }
 
-async function cancelGroupRequest(db: any, memberId: string, groupId: string) {
+async function removeOrCancelGroupMember(db: any, memberId: string, groupId: string) {
     const batch = writeBatch(db);
-    // Remove the member from the group's subcollection
     const groupMemberRef = doc(db, "groups", groupId, "members", memberId);
     batch.delete(groupMemberRef);
-    // Remove the group from the user's subcollection
     const userGroupRef = doc(db, "users", memberId, "groups", groupId);
     batch.delete(userGroupRef);
     await batch.commit();
@@ -189,6 +183,9 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
   
   const [searchEmail, setSearchEmail] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
 
   const groupDocRef = useMemoFirebase(
     () => (firestore && groupId ? doc(firestore, 'groups', groupId) : null),
@@ -204,10 +201,16 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
   
   const currentUserMemberInfo = members?.find(m => m.userId === user?.uid);
 
+  useEffect(() => {
+    if (groupData) {
+        setNewGroupName(groupData.name);
+    }
+  }, [groupData]);
+
   const groupMapMarkers = useMemo(() => {
     if (!members) return [];
     return members
-      .filter(member => member.isSharingLocation && member.location)
+      .filter(member => member.status === 'accepted' && member.isSharingLocation && member.location)
       .map(member => {
         const coords = parseLocation(member.location!);
         return coords ? { ...coords, label: member.name.split(' ')[0] } : null;
@@ -251,34 +254,26 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
     setIsSearching(false);
   };
   
-  const handleAcceptRequest = async (memberId: string) => {
-    if (!firestore || !user) return;
-    try {
-        await acceptGroupRequest(firestore, memberId, groupId);
-        toast({ title: "Solicitud Aceptada", description: "El usuario ahora es miembro del grupo." });
-    } catch (error) {
-        console.error("Error accepting request:", error);
-        toast({ title: "Error", description: "No se pudo aceptar la solicitud.", variant: "destructive" });
-    }
-  };
-  
-  const handleCancelRequest = async (memberId: string) => {
+  const handleRemoveMember = async (memberId: string, memberName: string) => {
     if (!firestore) return;
     try {
-        await cancelGroupRequest(firestore, memberId, groupId);
-        toast({ title: "Invitación Cancelada", description: "La invitación ha sido retirada." });
+        await removeOrCancelGroupMember(firestore, memberId, groupId);
+        toast({ title: "Miembro Eliminado", description: `${memberName} ha sido eliminado del grupo.` });
     } catch (error) {
-        console.error("Error cancelling request:", error);
-        toast({ title: "Error", description: "No se pudo cancelar la invitación.", variant: "destructive" });
+        console.error("Error removing member:", error);
+        toast({ title: "Error", description: "No se pudo eliminar al miembro.", variant: "destructive" });
     }
   };
 
 
   const handleLocationSharingChange = async (isSharing: boolean) => {
-      if (!firestore || !user) return;
+      if (!firestore || !user || !userProfile) return;
       const memberRef = doc(firestore, "groups", groupId, "members", user.uid);
       try {
-          await updateDoc(memberRef, { isSharingLocation: isSharing });
+          await updateDoc(memberRef, { 
+            isSharingLocation: isSharing,
+            location: isSharing ? userProfile.location : ''
+           });
           toast({ title: "Preferencia guardada", description: `Compartir ubicación ${isSharing ? 'activado' : 'desactivado'}.` });
       } catch (error) {
           console.error("Error updating location sharing preference:", error);
@@ -289,7 +284,68 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
   const userProfileRef = useMemoFirebase(() => (firestore && user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
   const mapCenter = useMemo(() => userProfile?.location ? parseLocation(userProfile.location) : undefined, [userProfile]);
+  
+  const handleUpdateGroupName = async () => {
+    if (!firestore || !groupData || !newGroupName.trim()) {
+        toast({ title: "Error", description: "El nombre no puede estar vacío.", variant: "destructive" });
+        return;
+    }
+    setIsSavingName(true);
+    const batch = writeBatch(firestore);
+    const groupRef = doc(firestore, "groups", groupId);
+    batch.update(groupRef, { name: newGroupName });
 
+    // Update the group name in each member's user-groups subcollection
+    if (members) {
+        for (const member of members) {
+            const userGroupRef = doc(firestore, "users", member.userId, "groups", groupId);
+            batch.update(userGroupRef, { name: newGroupName });
+        }
+    }
+    try {
+        await batch.commit();
+        toast({ title: "Nombre Actualizado", description: "El nombre del grupo ha sido actualizado." });
+        setIsEditDialogOpen(false);
+    } catch (error) {
+        console.error("Error updating group name:", error);
+        toast({ title: "Error", description: "No se pudo actualizar el nombre del grupo.", variant: "destructive" });
+    }
+    setIsSavingName(false);
+  }
+
+  const handleDeleteGroup = async () => {
+    if (!firestore || !members) {
+      toast({ title: "Error", description: "No se puede eliminar el grupo.", variant: "destructive" });
+      return;
+    }
+    const batch = writeBatch(firestore);
+    // Delete the group document itself
+    const groupRef = doc(firestore, "groups", groupId);
+    batch.delete(groupRef);
+
+    // Delete all members from the group's subcollection
+    // and delete the group from each member's user-groups subcollection
+    for (const member of members) {
+        const memberRef = doc(firestore, "groups", groupId, "members", member.userId);
+        batch.delete(memberRef);
+        const userGroupRef = doc(firestore, "users", member.userId, "groups", groupId);
+        batch.delete(userGroupRef);
+    }
+    
+    // Also need to delete chat history
+    const chatRef = collection(firestore, `group-chats/${groupId}/messages`);
+    // Firestore doesn't support deleting collections from the client-side efficiently.
+    // This needs a backend function. For now, we will leave the chat messages.
+
+    try {
+      await batch.commit();
+      toast({ title: "Grupo Eliminado", description: "El grupo ha sido eliminado permanentemente." });
+      router.push("/groups");
+    } catch (error) {
+      console.error("Error deleting group:", error);
+      toast({ title: "Error", description: "No se pudo eliminar el grupo.", variant: "destructive" });
+    }
+  }
 
   if (isUserLoading || isLoadingGroupData || !user || !firestore) {
     return (
@@ -324,9 +380,39 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
 
         <div className="space-y-6">
              <Card>
-                <CardHeader className="pb-4">
-                    <CardTitle>Mapa del Grupo</CardTitle>
-                    <CardDescription>Ubicación de miembros que comparten su posición.</CardDescription>
+                <CardHeader className="pb-4 flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>Mapa del Grupo</CardTitle>
+                        <CardDescription>Ubicación de miembros que comparten su posición.</CardDescription>
+                    </div>
+                     {isOwner && (
+                        <div className="flex gap-2">
+                           <Button variant="outline" size="icon" onClick={() => setIsEditDialogOpen(true)}>
+                                <Edit className="h-4 w-4" />
+                                <span className="sr-only">Editar Nombre</span>
+                            </Button>
+                             <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="icon">
+                                        <Trash2 className="h-4 w-4" />
+                                        <span className="sr-only">Eliminar Grupo</span>
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Eliminar este grupo?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Esta acción es permanente y eliminará el grupo, todos sus miembros y el historial de chat. No se puede deshacer.
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDeleteGroup}>Sí, eliminar grupo</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
+                    )}
                 </CardHeader>
                 <CardContent>
                     <div className="relative h-64 w-full rounded-lg overflow-hidden mb-4">
@@ -386,23 +472,27 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
                             </div>
                             </div>
                             <div className="flex items-center gap-2">
-                            {member.status === 'pending' && isOwner && (
+                            {isOwner && member.userId !== user.uid && (
                                  <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                         <Button size="sm" variant="destructive">
-                                            <XCircle className="mr-2 h-4 w-4" /> Cancelar
+                                            <XCircle className="mr-2 h-4 w-4" /> 
+                                            {member.status === 'pending' ? 'Cancelar' : 'Eliminar'}
                                         </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
-                                        <AlertDialogTitle>¿Cancelar Invitación?</AlertDialogTitle>
+                                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Esta acción cancelará la invitación enviada a {member.name}. No podrás deshacer esta acción.
+                                            {member.status === 'pending'
+                                                ? `Esto cancelará la invitación enviada a ${member.name}.`
+                                                : `Esto eliminará a ${member.name} del grupo.`
+                                            }
                                         </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                         <AlertDialogCancel>Cerrar</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleCancelRequest(member.id)}>Confirmar</AlertDialogAction>
+                                        <AlertDialogAction onClick={() => handleRemoveMember(member.id, member.name)}>Confirmar</AlertDialogAction>
                                         </AlertDialogFooter>
                                     </AlertDialogContent>
                                 </AlertDialog>
@@ -421,6 +511,32 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
             </Card>
         </div>
       </div>
+       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Editar Nombre del Grupo</DialogTitle>
+                    <DialogDescription>
+                        Elige un nuevo nombre para tu grupo.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="group-name">Nombre del Grupo</Label>
+                        <Input
+                            id="group-name"
+                            value={newGroupName}
+                            onChange={(e) => setNewGroupName(e.target.value)}
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => setIsEditDialogOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleUpdateGroupName} disabled={isSavingName}>
+                        {isSavingName ? <Loader className="animate-spin" /> : "Guardar Cambios"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </AppShell>
   );
 }

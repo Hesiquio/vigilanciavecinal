@@ -22,19 +22,12 @@ import { useToast } from "@/hooks/use-toast";
 import { collection, addDoc, writeBatch, doc, updateDoc } from "firebase/firestore";
 import type { UserGroup } from "@/types";
 
-// This type needs to be expanded to include the status from the user's perspective
-type UserGroupWithStatus = UserGroup & {
-    status?: 'pending' | 'accepted';
-}
-
 async function acceptGroupInvitation(db: any, userId: string, groupId: string) {
     const batch = writeBatch(db);
 
-    // Update the group's status in the user's subcollection
     const userGroupRef = doc(db, "users", userId, "groups", groupId);
     batch.update(userGroupRef, { status: 'accepted' });
 
-    // Update the member's status in the group's members subcollection
     const groupMemberRef = doc(db, "groups", groupId, "members", userId);
     batch.update(groupMemberRef, { status: 'accepted' });
 
@@ -55,7 +48,7 @@ export default function GroupsPage() {
     () => (user && firestore ? collection(firestore, `users/${user.uid}/groups`) : null),
     [user, firestore]
   );
-  const { data: userGroups, isLoading: isLoadingGroups } = useCollection<UserGroupWithStatus>(userGroupsQuery);
+  const { data: userGroups, isLoading: isLoadingGroups } = useCollection<UserGroup>(userGroupsQuery);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -79,21 +72,18 @@ export default function GroupsPage() {
     try {
         const batch = writeBatch(firestore);
 
-        // 1. Create the group document in the main 'groups' collection
         const newGroupRef = doc(collection(firestore, "groups"));
         batch.set(newGroupRef, {
             name: newGroupName,
             ownerId: user.uid,
         });
 
-        // 2. Add the group to the user's subcollection of groups with 'accepted' status
         const userGroupRef = doc(firestore, `users/${user.uid}/groups`, newGroupRef.id);
         batch.set(userGroupRef, {
             name: newGroupName,
             status: 'accepted',
         });
 
-        // 3. Add the creator as the first accepted member of the group
         const groupMemberRef = doc(firestore, `groups/${newGroupRef.id}/members`, user.uid);
         batch.set(groupMemberRef, {
             userId: user.uid,
@@ -101,8 +91,8 @@ export default function GroupsPage() {
             email: user.email,
             avatarUrl: user.photoURL,
             status: 'accepted',
-            isSharingLocation: false, // Default value
-            location: '', // Default value
+            isSharingLocation: false, 
+            location: '', 
         });
 
         await batch.commit();

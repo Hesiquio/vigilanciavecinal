@@ -40,6 +40,7 @@ export type GroupMember = {
 export type UserGroup = {
     id: string;
     name: string;
+    status?: 'pending' | 'accepted';
 }
 
 export type ChatMessage = {

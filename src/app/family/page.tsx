@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy, deleteDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy, updateDoc } from "firebase/firestore";
 import { doc } from "firebase/firestore";
 import type { FamilyMember, UserProfile, ChatMessage } from "@/types";
 import { Loader, UserPlus, Check, Send, AlertCircle, XCircle } from "lucide-react";
@@ -27,6 +27,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+
 
 const GoogleMapComponent = dynamic(() => import('@/components/dashboard/GoogleMapComponent'), {
     ssr: false,
@@ -67,6 +70,8 @@ async function sendFamilyRequest(db: any, currentUser: any, targetUser: UserProf
         email: targetUser.email,
         avatarUrl: targetUser.avatarUrl,
         status: 'requested',
+        isSharingLocation: false,
+        location: ''
     });
     const targetUserFamilyRef = doc(db, "users", targetUser.id, "familyMembers", currentUser.uid);
     batch.set(targetUserFamilyRef, {
@@ -75,6 +80,8 @@ async function sendFamilyRequest(db: any, currentUser: any, targetUser: UserProf
         email: currentUser.email,
         avatarUrl: currentUser.photoURL,
         status: 'pending',
+        isSharingLocation: false,
+        location: ''
     });
     await batch.commit();
 }
@@ -88,7 +95,7 @@ async function acceptFamilyRequest(db: any, currentUser: any, memberId: string) 
     await batch.commit();
 }
 
-async function cancelFamilyRequest(db: any, currentUserId: string, memberId: string) {
+async function removeOrCancelFamilyMember(db: any, currentUserId: string, memberId: string) {
     const batch = writeBatch(db);
     const yourFamilyMemberRef = doc(db, "users", currentUserId, "familyMembers", memberId);
     const theirFamilyMemberRef = doc(db, "users", memberId, "familyMembers", currentUserId);
@@ -96,6 +103,7 @@ async function cancelFamilyRequest(db: any, currentUserId: string, memberId: str
     batch.delete(theirFamilyMemberRef);
     await batch.commit();
 }
+
 
 const FamilyChat = ({ user, firestore }: { user: any, firestore: any }) => {
     const familyId = user.uid; // Use the user's own UID as the ID for their family chat
@@ -187,36 +195,61 @@ export default function FamilyPage() {
   );
   const { data: familyMembers, isLoading: isLoadingFamily } = useCollection<FamilyMember>(familyQuery);
 
+  const currentUserFamilyMemberInfo = useMemo(() => {
+    if (!familyMembers || !user) return undefined;
+    // Technically, the user isn't in their own familyMembers subcollection.
+    // This is a conceptual representation. We need to find the record *for* the current user
+    // in *other people's* family lists, but that's too complex.
+    // We'll manage their location sharing preference directly on their own `familyMembers` documents.
+    // Let's find the current user's *own* preference.
+    // It's not stored per-user, it's stored per-relationship.
+    // The UI implies a single switch for the whole family, which is a simplification.
+    // Let's assume the switch controls sharing with *everyone* in the family.
+    // We can just pick the first member's status as representative.
+    return familyMembers.find(m => m.id === user.uid); // This will always be undefined.
+
+  }, [familyMembers, user]);
+
+
   const acceptedMemberIds = useMemo(() => {
     if (!familyMembers) return [];
     return familyMembers.filter(m => m.status === 'accepted').map(m => m.userId);
   }, [familyMembers]);
-
+  
   const acceptedMembersProfilesQuery = useMemoFirebase(() => {
     if (!firestore || acceptedMemberIds.length === 0) return null;
     return query(collection(firestore, 'users'), where('__name__', 'in', acceptedMemberIds));
   }, [firestore, acceptedMemberIds]);
   const { data: acceptedMembersProfiles } = useCollection<UserProfile>(acceptedMembersProfilesQuery);
+
   
   const userProfileRef = useMemoFirebase(() => (firestore && user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
 
   const familyMapMarkers = useMemo(() => {
     const markers = [];
+    // User's own location if they are sharing
+    const currentUserMemberEntry = familyMembers?.find(m => m.userId === user.uid);
     if (userProfile?.location) {
         const coords = parseLocation(userProfile.location);
-        if (coords) markers.push({ ...coords, label: user?.displayName?.split(' ')[0] || 'Tú' });
+        if (coords) markers.push({ ...coords, label: `${user?.displayName?.split(' ')[0] || 'Tú'} (Tú)` });
     }
-    if (acceptedMembersProfiles) {
-        acceptedMembersProfiles.forEach(profile => {
-            if (profile.location) {
-                const coords = parseLocation(profile.location);
-                if (coords) markers.push({ ...coords, label: profile.name.split(' ')[0] });
-            }
-        });
+
+    // Accepted family members' locations if they are sharing
+    if (familyMembers) {
+      familyMembers.forEach(member => {
+        if (member.status === 'accepted' && member.isSharingLocation && member.location) {
+          const coords = parseLocation(member.location);
+          if (coords) {
+            markers.push({ ...coords, label: member.name.split(' ')[0] });
+          }
+        }
+      });
     }
+
     return markers;
-  }, [userProfile, acceptedMembersProfiles, user]);
+  }, [userProfile, familyMembers, user]);
+
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -264,16 +297,61 @@ export default function FamilyPage() {
     }
   };
 
-  const handleCancelRequest = async (memberId: string) => {
+  const handleRemoveOrCancel = async (memberId: string, memberName: string) => {
     if (!firestore || !user) return;
     try {
-        await cancelFamilyRequest(firestore, user.uid, memberId);
-        toast({ title: "Solicitud Cancelada", description: "La invitación ha sido retirada." });
+        await removeOrCancelFamilyMember(firestore, user.uid, memberId);
+        toast({ title: "Miembro Eliminado", description: `Se ha quitado a ${memberName} de tu familia.` });
     } catch (error) {
-        console.error("Error cancelling request:", error);
-        toast({ title: "Error", description: "No se pudo cancelar la solicitud.", variant: "destructive" });
+        console.error("Error removing member:", error);
+        toast({ title: "Error", description: "No se pudo eliminar al miembro.", variant: "destructive" });
     }
   };
+
+  const handleLocationSharingChange = async (isSharing: boolean) => {
+      if (!firestore || !user || !familyMembers) return;
+      
+      const batch = writeBatch(firestore);
+      
+      // Update the `isSharingLocation` field for the current user in every accepted member's family list
+      familyMembers.forEach(member => {
+          if (member.status === 'accepted') {
+              const theirFamilyMemberRef = doc(firestore, "users", member.userId, "familyMembers", user.uid);
+              batch.update(theirFamilyMemberRef, { 
+                  isSharingLocation: isSharing,
+                  location: isSharing ? userProfile?.location : ''
+              });
+          }
+      });
+
+      try {
+          await batch.commit();
+          toast({ title: "Preferencia guardada", description: `Compartir ubicación ${isSharing ? 'activado' : 'desactivado'}.` });
+      } catch (error) {
+          console.error("Error updating location sharing preference:", error);
+          toast({ title: "Error", description: "No se pudo guardar tu preferencia.", variant: "destructive" });
+      }
+  }
+
+  const isCurrentUserSharing = useMemo(() => {
+    // A bit tricky. We need to check if ANY of our accepted family members have us listed as sharing.
+    // This requires a more complex query structure.
+    // For simplicity, we'll make a local assumption. The real state is distributed.
+    // We'll base the switch state on our *intent* to share, which is what we control.
+    // Let's check if there's any accepted member where we are sharing.
+    // This still requires querying other documents.
+    // Let's try a simpler approach: we need to fetch our own entry in an accepted member's list.
+    // This is still complex. Let's make a simplifying assumption for the UI:
+    // We'll consider the user to be "sharing" if they have toggled it on, and we will update all
+    // their family members' view of them. The switch state will reflect this intent.
+    // We'll need a state for the switch, and on toggle, we write to all family members.
+    // For now, let's just use a local state.
+    // A better approach would be to have a single document for the family group with member prefs.
+    // Given the current structure, we can't easily read our own sharing status.
+    // Let's disable the switch for now.
+    return false;
+  }, [familyMembers]);
+
   
   if (isUserLoading || !user || !firestore) {
     return (
@@ -294,12 +372,25 @@ export default function FamilyPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Mapa Familiar</CardTitle>
-                    <CardDescription>Visualiza la última ubicación conocida de tus familiares aceptados.</CardDescription>
+                    <CardDescription>Visualiza la última ubicación conocida de tus familiares.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="relative h-64 w-full rounded-lg overflow-hidden">
-                        <GoogleMapComponent center={userProfile?.location ? parseLocation(userProfile.location) : undefined} markers={familyMapMarkers} />
+                    <div className="relative h-64 w-full rounded-lg overflow-hidden mb-4">
+                        <GoogleMapComponent 
+                          center={userProfile?.location ? parseLocation(userProfile.location) : undefined} 
+                          markers={familyMapMarkers} 
+                        />
                     </div>
+                    <div className="flex items-center space-x-2">
+                        <Switch 
+                            id="location-sharing-family"
+                            // onCheckedChange={handleLocationSharingChange}
+                            // checked={isCurrentUserSharing}
+                            disabled={true} // Disabled until a good way to manage state is found
+                         />
+                        <Label htmlFor="location-sharing-family">Compartir mi ubicación con mi familia</Label>
+                    </div>
+                     <p className="text-xs text-muted-foreground mt-2">Esta función se encuentra en desarrollo.</p>
                 </CardContent>
             </Card>
 
@@ -349,28 +440,32 @@ export default function FamilyPage() {
                                 <Check className="mr-2 h-4 w-4" /> Aceptar
                                 </Button>
                             )}
-                            {member.status === 'requested' && (
+                            {(member.status === 'requested' || member.status === 'accepted') && (
                                  <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                         <Button size="sm" variant="destructive">
-                                            <XCircle className="mr-2 h-4 w-4" /> Cancelar
+                                            <XCircle className="mr-2 h-4 w-4" /> 
+                                            {member.status === 'requested' ? 'Cancelar' : 'Eliminar'}
                                         </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
-                                        <AlertDialogTitle>¿Cancelar Solicitud?</AlertDialogTitle>
+                                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Esta acción cancelará la solicitud de familiar enviada a {member.name}. No podrás deshacer esta acción.
+                                            {member.status === 'requested'
+                                                ? `Esto cancelará la solicitud de familiar enviada a ${member.name}.`
+                                                : `Esto eliminará a ${member.name} de tu familia. Ambos tendrán que volver a agregarse.`
+                                            }
                                         </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                         <AlertDialogCancel>Cerrar</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleCancelRequest(member.id)}>Confirmar</AlertDialogAction>
+                                        <AlertDialogAction onClick={() => handleRemoveOrCancel(member.id, member.name)}>Confirmar</AlertDialogAction>
                                         </AlertDialogFooter>
                                     </AlertDialogContent>
                                 </AlertDialog>
                             )}
-                            {member.status === 'accepted' && <p className="text-xs text-green-500 pr-2">Aceptado</p>}
+                            {member.status === 'accepted' && member.id !== user.uid && <p className="text-xs text-green-500 pr-2">Aceptado</p>}
                             </div>
                         </li>
                         ))
@@ -386,5 +481,3 @@ export default function FamilyPage() {
     </AppShell>
   );
 }
-
-    
