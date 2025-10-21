@@ -175,10 +175,10 @@ export default function FamilyPage() {
   }, [familyMembers]);
   
   const familyWithCurrentUserIds = useMemo(() => {
-    if (user) {
+    if (user && acceptedMemberIds.length > 0) {
         return [...acceptedMemberIds, user.uid];
     }
-    return acceptedMemberIds;
+    return user ? [user.uid] : [];
   }, [acceptedMemberIds, user]);
 
 
@@ -198,15 +198,16 @@ export default function FamilyPage() {
     return query(collection(firestore, 'users'), where('__name__', 'in', acceptedMemberIds));
   }, [firestore, acceptedMemberIds]);
   const { data: acceptedMembersProfiles } = useCollection<UserProfile>(acceptedMembersProfilesQuery);
+  
+  const userProfileRef = useMemoFirebase(() => (firestore && user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
 
   const familyMapMarkers = useMemo(() => {
     const markers = [];
-    // Add current user's location
     if (userProfile?.location) {
         const coords = parseLocation(userProfile.location);
         if (coords) markers.push({ ...coords, label: user.displayName || 'Tú' });
     }
-    // Add accepted family members' locations
     if (acceptedMembersProfiles) {
         acceptedMembersProfiles.forEach(profile => {
             if (profile.location) {
@@ -264,9 +265,6 @@ export default function FamilyPage() {
     }
   };
   
-  const userProfileRef = useMemoFirebase(() => (firestore && user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
-  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
-
   if (isUserLoading || !user || !firestore) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background">

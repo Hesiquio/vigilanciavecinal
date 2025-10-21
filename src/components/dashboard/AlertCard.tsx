@@ -87,7 +87,7 @@ export function AlertCard({ alert }: AlertCardProps) {
         </div>
       </div>
       <div className="relative h-48 w-full rounded-lg overflow-hidden">
-        <LeafletMapComponent markers={markers} />
+        <LeafletMapComponent markers={markers} center={markerPosition || undefined} />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Button variant="outline">
