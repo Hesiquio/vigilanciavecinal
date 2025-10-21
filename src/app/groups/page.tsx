@@ -14,13 +14,33 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Users, Loader, ChevronRight } from "lucide-react";
+import { PlusCircle, Users, Loader, ChevronRight, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { collection, addDoc, writeBatch, doc } from "firebase/firestore";
+import { collection, addDoc, writeBatch, doc, updateDoc } from "firebase/firestore";
 import type { UserGroup } from "@/types";
+
+// This type needs to be expanded to include the status from the user's perspective
+type UserGroupWithStatus = UserGroup & {
+    status?: 'pending' | 'accepted';
+}
+
+async function acceptGroupInvitation(db: any, userId: string, groupId: string) {
+    const batch = writeBatch(db);
+
+    // Update the group's status in the user's subcollection
+    const userGroupRef = doc(db, "users", userId, "groups", groupId);
+    batch.update(userGroupRef, { status: 'accepted' });
+
+    // Update the member's status in the group's members subcollection
+    const groupMemberRef = doc(db, "groups", groupId, "members", userId);
+    batch.update(groupMemberRef, { status: 'accepted' });
+
+    await batch.commit();
+}
+
 
 export default function GroupsPage() {
   const { user, isUserLoading, auth, firestore } = useFirebase();
@@ -35,7 +55,7 @@ export default function GroupsPage() {
     () => (user && firestore ? collection(firestore, `users/${user.uid}/groups`) : null),
     [user, firestore]
   );
-  const { data: userGroups, isLoading: isLoadingGroups } = useCollection<UserGroup>(userGroupsQuery);
+  const { data: userGroups, isLoading: isLoadingGroups } = useCollection<UserGroupWithStatus>(userGroupsQuery);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -66,10 +86,11 @@ export default function GroupsPage() {
             ownerId: user.uid,
         });
 
-        // 2. Add the group to the user's subcollection of groups
+        // 2. Add the group to the user's subcollection of groups with 'accepted' status
         const userGroupRef = doc(firestore, `users/${user.uid}/groups`, newGroupRef.id);
         batch.set(userGroupRef, {
             name: newGroupName,
+            status: 'accepted',
         });
 
         // 3. Add the creator as the first accepted member of the group
@@ -80,6 +101,8 @@ export default function GroupsPage() {
             email: user.email,
             avatarUrl: user.photoURL,
             status: 'accepted',
+            isSharingLocation: false, // Default value
+            location: '', // Default value
         });
 
         await batch.commit();
@@ -93,6 +116,24 @@ export default function GroupsPage() {
         toast({ title: "Error", description: "No se pudo crear el grupo.", variant: "destructive" });
     }
     setIsCreating(false);
+  };
+  
+   const handleAcceptInvitation = async (groupId: string) => {
+    if (!user || !firestore) return;
+    try {
+      await acceptGroupInvitation(firestore, user.uid, groupId);
+      toast({
+        title: "¡Te has unido al grupo!",
+        description: "La invitación ha sido aceptada.",
+      });
+    } catch (error) {
+      console.error("Error accepting group invitation:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo aceptar la invitación.",
+        variant: "destructive",
+      });
+    }
   };
 
 
@@ -110,7 +151,7 @@ export default function GroupsPage() {
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                     <CardTitle>Mis Grupos</CardTitle>
-                    <CardDescription>Crea o únete a grupos de chat personalizados.</CardDescription>
+                    <CardDescription>Crea grupos, únete a ellos y gestiona tus invitaciones.</CardDescription>
                 </div>
                  <Button onClick={() => setIsCreateDialogOpen(true)}>
                     <PlusCircle className="mr-2 h-4 w-4" />
@@ -125,25 +166,34 @@ export default function GroupsPage() {
                     </div>
                 ) : userGroups && userGroups.length > 0 ? (
                      userGroups.map((group) => (
-                        <Link href={`/groups/${group.id}`} key={group.id} passHref>
-                           <Button variant="outline" className="w-full justify-between h-20 p-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="bg-secondary p-3 rounded-lg">
-                                        <Users className="h-6 w-6 text-secondary-foreground" />
-                                    </div>
-                                    <div>
-                                        <p className="text-base font-semibold">{group.name}</p>
-                                    </div>
+                        <div key={group.id} className="w-full justify-between h-20 p-4 rounded-lg border bg-card text-card-foreground shadow-sm flex items-center gap-4">
+                            <div className="flex items-center gap-4 flex-1">
+                                <div className="bg-secondary p-3 rounded-lg">
+                                    <Users className="h-6 w-6 text-secondary-foreground" />
                                 </div>
-                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                            </Button>
-                        </Link>
+                                <div>
+                                    <p className="text-base font-semibold">{group.name}</p>
+                                    {group.status === 'pending' && <p className="text-xs text-amber-500">Invitación pendiente</p>}
+                                </div>
+                            </div>
+                            {group.status === 'pending' ? (
+                                <Button size="sm" onClick={() => handleAcceptInvitation(group.id)}>
+                                    <Check className="mr-2 h-4 w-4"/> Aceptar
+                                </Button>
+                            ) : (
+                                <Link href={`/groups/${group.id}`} passHref>
+                                    <Button variant="ghost" size="icon">
+                                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                                    </Button>
+                                </Link>
+                            )}
+                        </div>
                      ))
                 ) : (
                     <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg text-center p-4">
                         <Users className="h-12 w-12 text-muted-foreground" />
                         <p className="mt-4 text-sm text-muted-foreground">Aún no perteneces a ningún grupo.</p>
-                        <p className="text-xs text-muted-foreground">¡Crea uno para empezar a colaborar!</p>
+                        <p className="text-xs text-muted-foreground">¡Crea uno para empezar a colaborar o espera una invitación!</p>
                     </div>
                 )}
             </CardContent>
@@ -179,4 +229,3 @@ export default function GroupsPage() {
     </AppShell>
   );
 }
-

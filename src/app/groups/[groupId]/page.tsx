@@ -13,12 +13,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy, updateDoc, deleteDoc } from "firebase/firestore";
 import { doc } from "firebase/firestore";
 import type { GroupMember, UserProfile, ChatMessage, Group } from "@/types";
-import { Loader, UserPlus, Check, Send, AlertCircle, ArrowLeft } from "lucide-react";
+import { Loader, UserPlus, Check, Send, AlertCircle, ArrowLeft, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import dynamic from 'next/dynamic';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const GoogleMapComponent = dynamic(() => import('@/components/dashboard/GoogleMapComponent'), {
     ssr: false,
@@ -49,33 +60,54 @@ async function findUserByEmail(db: any, email: string): Promise<(UserProfile & {
   return { id: userDoc.id, ...userDoc.data() as UserProfile };
 }
 
-async function sendGroupRequest(db: any, currentUser: any, targetUser: UserProfile & {id: string}, groupId: string, groupName: string) {
+async function sendGroupRequest(db: any, targetUser: UserProfile & {id: string}, groupId: string, groupName: string) {
     const batch = writeBatch(db);
-    // Add pending member to the group's member list
+    // This creates a 'requested' status for the inviter, but groups don't work that way.
+    // The owner invites, and the target gets a 'pending' status.
+    // We will add the user directly to the group members with 'pending' status.
     const groupMemberRef = doc(db, "groups", groupId, "members", targetUser.id);
     batch.set(groupMemberRef, {
         userId: targetUser.id,
         name: targetUser.name,
         email: targetUser.email,
         avatarUrl: targetUser.avatarUrl,
-        status: 'pending',
-        isSharingLocation: false, // Default to not sharing
+        status: 'pending', // The user has been invited and their status is pending acceptance.
+        isSharingLocation: false,
         location: targetUser.location || '',
     });
-    // Add requested group to the target user's group list
-    const targetUserGroupRef = doc(db, "users", targetUser.id, "groups", groupId);
-    batch.set(targetUserGroupRef, {
+    
+    // Add a reference to the group in the user's own groups subcollection
+    const userGroupRef = doc(db, "users", targetUser.id, "groups", groupId);
+    batch.set(userGroupRef, {
         name: groupName,
-        status: 'pending'
+        status: 'pending' // This user has a pending invite to this group
     });
+
     await batch.commit();
 }
 
 
-async function acceptGroupRequest(db: any, currentUser: any, memberId: string, groupId: string) {
+async function acceptGroupRequest(db: any, userId: string, groupId: string) {
     const batch = writeBatch(db);
-    const groupMemberRef = doc(db, "groups", groupId, "members", memberId);
+    // Update the member's status in the group's subcollection
+    const groupMemberRef = doc(db, "groups", groupId, "members", userId);
     batch.update(groupMemberRef, { status: 'accepted' });
+
+    // Update the group's status in the user's subcollection
+    const userGroupRef = doc(db, "users", userId, "groups", groupId);
+    batch.update(userGroupRef, { status: 'accepted' });
+    
+    await batch.commit();
+}
+
+async function cancelGroupRequest(db: any, memberId: string, groupId: string) {
+    const batch = writeBatch(db);
+    // Remove the member from the group's subcollection
+    const groupMemberRef = doc(db, "groups", groupId, "members", memberId);
+    batch.delete(groupMemberRef);
+    // Remove the group from the user's subcollection
+    const userGroupRef = doc(db, "users", memberId, "groups", groupId);
+    batch.delete(userGroupRef);
     await batch.commit();
 }
 
@@ -204,11 +236,11 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
       const targetUser = await findUserByEmail(firestore, searchEmail);
       if (!targetUser) {
         toast({ title: "Usuario no encontrado", description: "No se encontró ningún usuario con ese correo electrónico.", variant: "destructive" });
-      } else if (targetUser.id === user.uid) {
-        toast({ title: "Acción no permitida", description: "Ya eres miembro de este grupo.", variant: "destructive" });
+      } else if (members?.some(m => m.userId === targetUser.id)) {
+        toast({ title: "Acción no permitida", description: "Este usuario ya es miembro o tiene una invitación pendiente.", variant: "destructive" });
       }
       else {
-        await sendGroupRequest(firestore, user, targetUser, groupId, groupData.name);
+        await sendGroupRequest(firestore, targetUser, groupId, groupData.name);
         toast({ title: "Solicitud Enviada", description: `Se ha enviado una solicitud a ${targetUser.name} para unirse al grupo.` });
         setSearchEmail("");
       }
@@ -222,7 +254,7 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
   const handleAcceptRequest = async (memberId: string) => {
     if (!firestore || !user) return;
     try {
-        await acceptGroupRequest(firestore, user, memberId, groupId);
+        await acceptGroupRequest(firestore, memberId, groupId);
         toast({ title: "Solicitud Aceptada", description: "El usuario ahora es miembro del grupo." });
     } catch (error) {
         console.error("Error accepting request:", error);
@@ -230,6 +262,18 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
     }
   };
   
+  const handleCancelRequest = async (memberId: string) => {
+    if (!firestore) return;
+    try {
+        await cancelGroupRequest(firestore, memberId, groupId);
+        toast({ title: "Invitación Cancelada", description: "La invitación ha sido retirada." });
+    } catch (error) {
+        console.error("Error cancelling request:", error);
+        toast({ title: "Error", description: "No se pudo cancelar la invitación.", variant: "destructive" });
+    }
+  };
+
+
   const handleLocationSharingChange = async (isSharing: boolean) => {
       if (!firestore || !user) return;
       const memberRef = doc(firestore, "groups", groupId, "members", user.uid);
@@ -254,6 +298,8 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
       </div>
     );
   }
+
+  const isOwner = user.uid === groupData?.ownerId;
 
   return (
     <AppShell user={user} onSignOut={handleSignOut}>
@@ -291,12 +337,13 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
                             id="location-sharing"
                             checked={currentUserMemberInfo?.isSharingLocation || false}
                             onCheckedChange={handleLocationSharingChange}
-                            disabled={isLoadingMembers}
+                            disabled={isLoadingMembers || !currentUserMemberInfo}
                          />
                         <Label htmlFor="location-sharing">Compartir mi ubicación con este grupo</Label>
                     </div>
                 </CardContent>
             </Card>
+            {isOwner && (
              <Card>
                 <CardHeader>
                     <CardTitle>Añadir Miembro</CardTitle>
@@ -313,6 +360,7 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
                     </Button>
                 </CardContent>
             </Card>
+            )}
             
             <Card>
                 <CardHeader>
@@ -337,15 +385,29 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
                                 <p className="text-xs text-muted-foreground">{member.email}</p>
                             </div>
                             </div>
-                            <div>
-                            {/* This logic is simplified: only shows for owner/admin in a real app */}
-                            {member.status === 'pending' && user.uid === groupData?.ownerId && (
-                                <Button size="sm" onClick={() => handleAcceptRequest(member.id)}>
-                                <Check className="mr-2 h-4 w-4" /> Aceptar
-                                </Button>
+                            <div className="flex items-center gap-2">
+                            {member.status === 'pending' && isOwner && (
+                                 <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button size="sm" variant="destructive">
+                                            <XCircle className="mr-2 h-4 w-4" /> Cancelar
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>¿Cancelar Invitación?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Esta acción cancelará la invitación enviada a {member.name}. No podrás deshacer esta acción.
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>Cerrar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleCancelRequest(member.id)}>Confirmar</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             )}
-                            {member.status === 'pending' && user.uid !== groupData?.ownerId && <p className="text-xs text-muted-foreground pr-2">Pendiente</p>}
-                            {member.status === 'requested' && <p className="text-xs text-muted-foreground pr-2">Solicitud enviada</p>}
+                            {member.status === 'pending' && !isOwner && <p className="text-xs text-muted-foreground pr-2">Pendiente</p>}
                             {member.status === 'accepted' && <p className="text-xs text-green-500 pr-2">Miembro</p>}
                             </div>
                         </li>

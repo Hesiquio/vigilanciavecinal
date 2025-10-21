@@ -10,12 +10,23 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy, deleteDoc } from "firebase/firestore";
 import { doc } from "firebase/firestore";
 import type { FamilyMember, UserProfile, ChatMessage } from "@/types";
-import { Loader, UserPlus, Check, Send, AlertCircle } from "lucide-react";
+import { Loader, UserPlus, Check, Send, AlertCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import dynamic from 'next/dynamic';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const GoogleMapComponent = dynamic(() => import('@/components/dashboard/GoogleMapComponent'), {
     ssr: false,
@@ -74,6 +85,15 @@ async function acceptFamilyRequest(db: any, currentUser: any, memberId: string) 
     batch.update(yourFamilyMemberRef, { status: 'accepted' });
     const theirFamilyMemberRef = doc(db, "users", memberId, "familyMembers", currentUser.uid);
     batch.update(theirFamilyMemberRef, { status: 'accepted' });
+    await batch.commit();
+}
+
+async function cancelFamilyRequest(db: any, currentUserId: string, memberId: string) {
+    const batch = writeBatch(db);
+    const yourFamilyMemberRef = doc(db, "users", currentUserId, "familyMembers", memberId);
+    const theirFamilyMemberRef = doc(db, "users", memberId, "familyMembers", currentUserId);
+    batch.delete(yourFamilyMemberRef);
+    batch.delete(theirFamilyMemberRef);
     await batch.commit();
 }
 
@@ -243,6 +263,17 @@ export default function FamilyPage() {
         toast({ title: "Error", description: "No se pudo aceptar la solicitud.", variant: "destructive" });
     }
   };
+
+  const handleCancelRequest = async (memberId: string) => {
+    if (!firestore || !user) return;
+    try {
+        await cancelFamilyRequest(firestore, user.uid, memberId);
+        toast({ title: "Solicitud Cancelada", description: "La invitación ha sido retirada." });
+    } catch (error) {
+        console.error("Error cancelling request:", error);
+        toast({ title: "Error", description: "No se pudo cancelar la solicitud.", variant: "destructive" });
+    }
+  };
   
   if (isUserLoading || !user || !firestore) {
     return (
@@ -312,13 +343,33 @@ export default function FamilyPage() {
                                 <p className="text-xs text-muted-foreground">{member.email}</p>
                             </div>
                             </div>
-                            <div>
+                            <div className="flex items-center gap-2">
                             {member.status === 'pending' && (
                                 <Button size="sm" onClick={() => handleAcceptRequest(member.id)}>
                                 <Check className="mr-2 h-4 w-4" /> Aceptar
                                 </Button>
                             )}
-                            {member.status === 'requested' && <p className="text-xs text-muted-foreground pr-2">Solicitud enviada</p>}
+                            {member.status === 'requested' && (
+                                 <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button size="sm" variant="destructive">
+                                            <XCircle className="mr-2 h-4 w-4" /> Cancelar
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>¿Cancelar Solicitud?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Esta acción cancelará la solicitud de familiar enviada a {member.name}. No podrás deshacer esta acción.
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>Cerrar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleCancelRequest(member.id)}>Confirmar</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            )}
                             {member.status === 'accepted' && <p className="text-xs text-green-500 pr-2">Aceptado</p>}
                             </div>
                         </li>

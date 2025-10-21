@@ -16,6 +16,8 @@ export type FamilyMember = {
   email: string;
   avatarUrl: string;
   status: 'pending' | 'accepted' | 'requested'; // pending: they invited you, requested: you invited them, accepted: friends
+  isSharingLocation?: boolean;
+  location?: string;
 };
 
 export type Group = {
