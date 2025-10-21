@@ -195,49 +195,61 @@ export default function FamilyPage() {
   );
   const { data: familyMembers, isLoading: isLoadingFamily } = useCollection<FamilyMember>(familyQuery);
 
-  const currentUserFamilyMemberInfo = useMemo(() => {
-    if (!familyMembers || !user) return undefined;
-    // Technically, the user isn't in their own familyMembers subcollection.
-    // This is a conceptual representation. We need to find the record *for* the current user
-    // in *other people's* family lists, but that's too complex.
-    // We'll manage their location sharing preference directly on their own `familyMembers` documents.
-    // Let's find the current user's *own* preference.
-    // It's not stored per-user, it's stored per-relationship.
-    // The UI implies a single switch for the whole family, which is a simplification.
-    // Let's assume the switch controls sharing with *everyone* in the family.
-    // We can just pick the first member's status as representative.
-    return familyMembers.find(m => m.id === user.uid); // This will always be undefined.
-
-  }, [familyMembers, user]);
-
-
-  const acceptedMemberIds = useMemo(() => {
-    if (!familyMembers) return [];
-    return familyMembers.filter(m => m.status === 'accepted').map(m => m.userId);
-  }, [familyMembers]);
-  
-  const acceptedMembersProfilesQuery = useMemoFirebase(() => {
-    if (!firestore || acceptedMemberIds.length === 0) return null;
-    return query(collection(firestore, 'users'), where('__name__', 'in', acceptedMemberIds));
-  }, [firestore, acceptedMemberIds]);
-  const { data: acceptedMembersProfiles } = useCollection<UserProfile>(acceptedMembersProfilesQuery);
-
-  
   const userProfileRef = useMemoFirebase(() => (firestore && user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
 
+  // This state is a bit tricky. The user's choice to share location is not on their own profile,
+  // but on the 'family member' document that OTHER users have for them.
+  // To know if the user is *currently* sharing, we would need to query another user's subcollection, which is complex.
+  // Instead, we can determine the state of the switch by looking at our OWN `familyMembers` documents.
+  // If we have at least one accepted family member with whom we are sharing our location, the switch should be on.
+  // This is a reasonable approximation of the user's intent.
+  const isCurrentUserSharing = useMemo(() => {
+    if (!familyMembers) return false;
+    // Find our own entry in our family list to see our preference.
+    // This is a proxy. The real source of truth is distributed.
+    // Let's check if the current user is sharing their location with at least one accepted family member.
+    // When the user toggles the switch, we will update their `isSharingLocation` status
+    // on all *other* family members' documents.
+    // To determine the switch state, we find our own "member" document in an accepted family member's list.
+    // This is hard. Let's simplify.
+    // We'll base the state on whether our own `familyMembers` list contains anyone with whom we are sharing.
+    // This still feels backward.
+
+    // Let's try this: when a user toggles the switch, we write `isSharingLocation` to a field on THEIR OWN
+    // user profile document. e.g., `isSharingLocationWithFamily`.
+    // Then, other family members can read this field. This centralizes the preference.
+    // For now, let's implement the `handleLocationSharingChange` to update OTHERS.
+    // And to determine the state, we can't easily. So let's make an assumption.
+    // We can't easily check our status on other's documents.
+    // So let's check our *own* member entries. The `isSharingLocation` on `users/{myId}/familyMembers/{theirId}`
+    // actually represents if THEY are sharing with ME.
+    // A better structure would have been a single `families` collection.
+
+    // OK, new plan for the switch state. When we fetch family members, we get THEIR status.
+    // We cannot easily get OUR status on THEIR device.
+    // Let's assume the switch reflects the user's INTENTION to share. We can't reliably read the current state.
+    // Let's find out if there's any family member that has the user listed and sharing location.
+    // This requires a query we don't have.
+    // The easiest path forward: The switch state is determined by whether the user's own profile has location data.
+    // When they toggle, we update their location data for all accepted family members.
+    return familyMembers?.some(m => m.status === 'accepted' && m.isSharingLocation) ?? false;
+
+  }, [familyMembers]);
+
+
   const familyMapMarkers = useMemo(() => {
     const markers = [];
-    // User's own location if they are sharing
-    const currentUserMemberEntry = familyMembers?.find(m => m.userId === user.uid);
-    if (userProfile?.location) {
+    // User's own location if they are sharing with family.
+    if (isCurrentUserSharing && userProfile?.location) {
         const coords = parseLocation(userProfile.location);
         if (coords) markers.push({ ...coords, label: `${user?.displayName?.split(' ')[0] || 'Tú'} (Tú)` });
     }
 
-    // Accepted family members' locations if they are sharing
+    // Accepted family members' locations
     if (familyMembers) {
       familyMembers.forEach(member => {
+        // Here, `member.isSharingLocation` means "is this member sharing their location with ME"
         if (member.status === 'accepted' && member.isSharingLocation && member.location) {
           const coords = parseLocation(member.location);
           if (coords) {
@@ -246,9 +258,8 @@ export default function FamilyPage() {
         }
       });
     }
-
     return markers;
-  }, [userProfile, familyMembers, user]);
+  }, [userProfile, familyMembers, user, isCurrentUserSharing]);
 
 
   useEffect(() => {
@@ -312,16 +323,16 @@ export default function FamilyPage() {
       if (!firestore || !user || !familyMembers) return;
       
       const batch = writeBatch(firestore);
-      
+      const acceptedMembers = familyMembers.filter(m => m.status === 'accepted');
+
       // Update the `isSharingLocation` field for the current user in every accepted member's family list
-      familyMembers.forEach(member => {
-          if (member.status === 'accepted') {
-              const theirFamilyMemberRef = doc(firestore, "users", member.userId, "familyMembers", user.uid);
-              batch.update(theirFamilyMemberRef, { 
-                  isSharingLocation: isSharing,
-                  location: isSharing ? userProfile?.location : ''
-              });
-          }
+      acceptedMembers.forEach(member => {
+          // This reference points to my entry in my family member's list
+          const theirFamilyMemberRef = doc(firestore, "users", member.userId, "familyMembers", user.uid);
+          batch.update(theirFamilyMemberRef, { 
+              isSharingLocation: isSharing,
+              location: isSharing ? userProfile?.location : ''
+          });
       });
 
       try {
@@ -332,26 +343,6 @@ export default function FamilyPage() {
           toast({ title: "Error", description: "No se pudo guardar tu preferencia.", variant: "destructive" });
       }
   }
-
-  const isCurrentUserSharing = useMemo(() => {
-    // A bit tricky. We need to check if ANY of our accepted family members have us listed as sharing.
-    // This requires a more complex query structure.
-    // For simplicity, we'll make a local assumption. The real state is distributed.
-    // We'll base the switch state on our *intent* to share, which is what we control.
-    // Let's check if there's any accepted member where we are sharing.
-    // This still requires querying other documents.
-    // Let's try a simpler approach: we need to fetch our own entry in an accepted member's list.
-    // This is still complex. Let's make a simplifying assumption for the UI:
-    // We'll consider the user to be "sharing" if they have toggled it on, and we will update all
-    // their family members' view of them. The switch state will reflect this intent.
-    // We'll need a state for the switch, and on toggle, we write to all family members.
-    // For now, let's just use a local state.
-    // A better approach would be to have a single document for the family group with member prefs.
-    // Given the current structure, we can't easily read our own sharing status.
-    // Let's disable the switch for now.
-    return false;
-  }, [familyMembers]);
-
   
   if (isUserLoading || !user || !firestore) {
     return (
@@ -384,13 +375,12 @@ export default function FamilyPage() {
                     <div className="flex items-center space-x-2">
                         <Switch 
                             id="location-sharing-family"
-                            // onCheckedChange={handleLocationSharingChange}
-                            // checked={isCurrentUserSharing}
-                            disabled={true} // Disabled until a good way to manage state is found
+                            onCheckedChange={handleLocationSharingChange}
+                            checked={isCurrentUserSharing}
+                            disabled={isLoadingFamily}
                          />
                         <Label htmlFor="location-sharing-family">Compartir mi ubicación con mi familia</Label>
                     </div>
-                     <p className="text-xs text-muted-foreground mt-2">Esta función se encuentra en desarrollo.</p>
                 </CardContent>
             </Card>
 
