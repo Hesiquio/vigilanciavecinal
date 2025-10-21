@@ -1,18 +1,17 @@
 
 "use client";
 
-import { useFirebase, useCollection, useMemoFirebase, useDoc } from "@/firebase";
-import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
+import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, orderBy, limit } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Users, ShieldAlert, MessagesSquare, Loader, Megaphone } from "lucide-react";
 import type { SosAlert } from "../AppShell";
-import type { Aviso, UserProfile, FamilyMember, GroupMember } from "@/types";
+import type { Aviso } from "@/types";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { AlertCard } from "./AlertCard";
-import { doc } from "firebase/firestore";
 
 type ActivityItem = (SosAlert & { type: 'alert' }) | (Aviso & { type: 'aviso' });
 
@@ -24,89 +23,29 @@ const formatTimestamp = (timestamp: { seconds: number, nanoseconds: number }): s
 
 
 export function RecentActivity() {
-  const { user, firestore } = useFirebase();
+  const { firestore } = useFirebase();
   const [selectedAlert, setSelectedAlert] = useState<SosAlert | null>(null);
-  const [relevantUserIds, setRelevantUserIds] = useState<string[]>([]);
-  const [isLoadingIds, setIsLoadingIds] = useState(true);
 
-  // 1. Get current user's profile to find their postalCode.
-  const userDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
-  const { data: userProfile } = useDoc<UserProfile>(userDocRef);
-
-  // 2. Get family members.
-  const familyQuery = useMemoFirebase(() => user && firestore ? collection(firestore, `users/${user.uid}/familyMembers`) : null, [user, firestore]);
-  const { data: familyMembers } = useCollection<FamilyMember>(familyQuery);
-
-  // 3. Get user's groups.
-  const userGroupsQuery = useMemoFirebase(() => user && firestore ? collection(firestore, `users/${user.uid}/groups`) : null, [user, firestore]);
-  const { data: userGroups } = useCollection(userGroupsQuery);
-
-  useEffect(() => {
-    if (!firestore || !user) return;
-
-    const fetchRelevantIds = async () => {
-        setIsLoadingIds(true);
-        const ids = new Set<string>();
-        ids.add(user.uid);
-
-        // IDs from family
-        if (familyMembers) {
-            familyMembers.filter(m => m.status === 'accepted').forEach(m => ids.add(m.userId));
-        }
-
-        // IDs from neighborhood (postal code)
-        if (userProfile?.postalCode) {
-            try {
-                const usersInNeighborhoodQuery = query(collection(firestore, 'users'), where('postalCode', '==', userProfile.postalCode));
-                const neighborhoodSnapshot = await getDocs(usersInNeighborhoodQuery);
-                neighborhoodSnapshot.forEach(doc => ids.add(doc.id));
-            } catch (e) {
-                console.warn("Could not query users by postal code. This might be due to missing Firestore indexes.", e);
-            }
-        }
-        
-        // IDs from groups
-        if (userGroups) {
-            for (const group of userGroups) {
-                const membersQuery = query(collection(firestore, `groups/${group.id}/members`), where('status', '==', 'accepted'));
-                const membersSnapshot = await getDocs(membersQuery);
-                membersSnapshot.forEach(memberDoc => ids.add(memberDoc.id));
-            }
-        }
-        
-        setRelevantUserIds(Array.from(ids));
-        setIsLoadingIds(false);
-    };
-
-    fetchRelevantIds();
-  }, [firestore, user, userProfile, familyMembers, userGroups]);
-
-
-  // Query for the latest SOS alert based on relevant user IDs
+  // Query for the latest SOS alert
   const alertsQuery = useMemoFirebase(() => {
-      if (!firestore || relevantUserIds.length === 0) return null;
-      // Firestore 'in' queries are limited to 30 items. Slice the array to prevent errors.
-      const queryableIds = relevantUserIds.slice(0, 30);
+      if (!firestore) return null;
       return query(
           collection(firestore, "sos-alerts"),
-          where('userId', 'in', queryableIds),
           orderBy("timestamp", "desc"),
           limit(5)
       );
-  }, [firestore, relevantUserIds]);
+  }, [firestore]);
   const { data: alerts, isLoading: isLoadingAlerts, error: alertsError } = useCollection<SosAlert>(alertsQuery);
   
   // Query for the latest Aviso
   const avisosQuery = useMemoFirebase(() => {
-     if (!firestore || relevantUserIds.length === 0) return null;
-     const queryableIds = relevantUserIds.slice(0, 30);
+     if (!firestore) return null;
       return query(
           collection(firestore, "avisos"),
-          where('userId', 'in', queryableIds),
           orderBy("timestamp", "desc"),
           limit(5)
       );
-  },[firestore, relevantUserIds]);
+  },[firestore]);
   const { data: avisos, isLoading: isLoadingAvisos, error: avisosError } = useCollection<Aviso>(avisosQuery);
 
 
@@ -120,7 +59,7 @@ export function RecentActivity() {
       .slice(0, 5); // Take the most recent 5 items overall
   }, [alerts, avisos]);
 
-  const isLoading = isLoadingIds || isLoadingAlerts || isLoadingAvisos;
+  const isLoading = isLoadingAlerts || isLoadingAvisos;
   const hasError = alertsError || avisosError;
 
   const handleAlertClick = (item: ActivityItem) => {
@@ -144,7 +83,7 @@ export function RecentActivity() {
          <div className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-destructive/50 rounded-lg text-destructive">
             <ShieldAlert className="h-8 w-8" />
             <p className="mt-2 text-sm font-semibold">Error al cargar la actividad</p>
-            <p className="text-xs">{hasError.message}</p>
+            <p className="text-xs max-w-full truncate">{hasError.message}</p>
           </div>
       );
     }
