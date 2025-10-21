@@ -21,7 +21,7 @@ import type { UserProfile } from "@/types";
 import { Loader, MapPin } from "lucide-react";
 import dynamic from 'next/dynamic';
 
-const LeafletMapComponent = dynamic(() => import('@/components/dashboard/LeafletMapComponent'), {
+const GoogleMapComponent = dynamic(() => import('@/components/dashboard/GoogleMapComponent'), {
     ssr: false,
     loading: () => <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center"><p>Cargando mapa...</p></div>,
 });
@@ -204,7 +204,7 @@ export default function SettingsPage() {
               </div>
             ) : (
               <div className="relative h-96 w-full rounded-lg overflow-hidden">
-                <LeafletMapComponent center={mapCenter} markers={mapMarkers} />
+                <GoogleMapComponent center={mapCenter} markers={mapMarkers} />
               </div>
             )}
             <Button disabled>

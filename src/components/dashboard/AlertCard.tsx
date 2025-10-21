@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import React from "react";
 import dynamic from 'next/dynamic';
 
-const LeafletMapComponent = dynamic(() => import('@/components/dashboard/LeafletMapComponent'), {
+const GoogleMapComponent = dynamic(() => import('@/components/dashboard/GoogleMapComponent'), {
     ssr: false,
     loading: () => <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center"><p>Cargando mapa...</p></div>,
 });
@@ -87,7 +87,7 @@ export function AlertCard({ alert }: AlertCardProps) {
         </div>
       </div>
       <div className="relative h-48 w-full rounded-lg overflow-hidden">
-        <LeafletMapComponent markers={markers} center={markerPosition || undefined} />
+        <GoogleMapComponent markers={markers} center={markerPosition || undefined} />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Button variant="outline">

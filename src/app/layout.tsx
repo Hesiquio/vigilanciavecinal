@@ -2,7 +2,6 @@ import type {Metadata} from 'next';
 import { Toaster } from "@/components/ui/toaster"
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
-import 'leaflet/dist/leaflet.css';
 
 
 export const metadata: Metadata = {

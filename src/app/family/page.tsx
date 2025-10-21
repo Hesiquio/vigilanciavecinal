@@ -19,7 +19,7 @@ import { AlertCard } from "@/components/dashboard/AlertCard";
 import type { SosAlert } from "@/components/AppShell";
 import dynamic from 'next/dynamic';
 
-const LeafletMapComponent = dynamic(() => import('@/components/dashboard/LeafletMapComponent'), {
+const GoogleMapComponent = dynamic(() => import('@/components/dashboard/GoogleMapComponent'), {
     ssr: false,
     loading: () => <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center"><p>Cargando mapa...</p></div>,
 });
@@ -309,7 +309,7 @@ export default function FamilyPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="relative h-64 w-full rounded-lg overflow-hidden">
-                        <LeafletMapComponent center={userProfile?.location ? parseLocation(userProfile.location) : undefined} markers={familyMapMarkers} />
+                        <GoogleMapComponent center={userProfile?.location ? parseLocation(userProfile.location) : undefined} markers={familyMapMarkers} />
                     </div>
                 </CardContent>
             </Card>

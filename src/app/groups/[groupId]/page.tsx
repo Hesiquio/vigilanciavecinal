@@ -20,7 +20,7 @@ import { Loader, UserPlus, Check, Send, AlertCircle, ArrowLeft } from "lucide-re
 import { cn } from "@/lib/utils";
 import dynamic from 'next/dynamic';
 
-const LeafletMapComponent = dynamic(() => import('@/components/dashboard/LeafletMapComponent'), {
+const GoogleMapComponent = dynamic(() => import('@/components/dashboard/GoogleMapComponent'), {
     ssr: false,
     loading: () => <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center"><p>Cargando mapa...</p></div>,
 });
@@ -284,7 +284,7 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
                 </CardHeader>
                 <CardContent>
                     <div className="relative h-64 w-full rounded-lg overflow-hidden mb-4">
-                        <LeafletMapComponent center={mapCenter} markers={groupMapMarkers}/>
+                        <GoogleMapComponent center={mapCenter} markers={groupMapMarkers}/>
                     </div>
                      <div className="flex items-center space-x-2">
                         <Switch 
