@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { useFirebase, useCollection, useDoc, useMemoFirebase } from "@/firebase";
 import { AppShell } from "@/components/AppShell";
@@ -175,8 +175,9 @@ const GroupChat = ({ user, firestore, groupId, groupName }: { user: any, firesto
 };
 
 
-export default function GroupDetailPage({ params }: { params: { groupId: string } }) {
-  const { groupId } = params;
+export default function GroupDetailPage() {
+  const params = useParams();
+  const groupId = params.groupId as string;
   const { user, isUserLoading, auth, firestore } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
@@ -540,3 +541,5 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
     </AppShell>
   );
 }
+
+    
