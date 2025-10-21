@@ -205,18 +205,18 @@ export default function FamilyPage() {
     const markers = [];
     if (userProfile?.location) {
         const coords = parseLocation(userProfile.location);
-        if (coords) markers.push({ ...coords });
+        if (coords) markers.push({ ...coords, label: user?.displayName?.split(' ')[0] || 'Tú' });
     }
     if (acceptedMembersProfiles) {
         acceptedMembersProfiles.forEach(profile => {
             if (profile.location) {
                 const coords = parseLocation(profile.location);
-                if (coords) markers.push({ ...coords });
+                if (coords) markers.push({ ...coords, label: profile.name.split(' ')[0] });
             }
         });
     }
     return markers;
-  }, [userProfile, acceptedMembersProfiles]);
+  }, [userProfile, acceptedMembersProfiles, user]);
 
   useEffect(() => {
     if (!isUserLoading && !user) {

@@ -17,6 +17,7 @@ const defaultCenter = {
 type MarkerData = {
   lat: number;
   lng: number;
+  label?: string;
 };
 
 type GoogleMapComponentProps = {
@@ -45,7 +46,11 @@ const GoogleMapComponent = ({ center, markers = [] }: GoogleMapComponentProps) =
         zoom={15}
       >
         {validMarkers.map((pos, index) => (
-          <MarkerF key={index} position={pos} />
+          <MarkerF 
+            key={index} 
+            position={pos} 
+            label={pos.label ? { text: pos.label, className: 'map-label', color: 'hsl(var(--foreground))', fontWeight: 'bold' } : undefined} 
+          />
         ))}
       </GoogleMap>
   ) : <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center"><p>Cargando mapa...</p></div>;
