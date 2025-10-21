@@ -58,6 +58,7 @@ const categoryColors: Record<AlertCategory, string> = {
 
 export function AlertCard({ alert }: AlertCardProps) {
   const markerPosition = parseLocation(alert.location);
+  const markers = markerPosition ? [markerPosition] : [];
 
   const Icon = categoryIcons[alert.category] || ShieldAlert;
   const colorClass = categoryColors[alert.category] || "border-destructive/50 text-destructive";
@@ -86,7 +87,7 @@ export function AlertCard({ alert }: AlertCardProps) {
         </div>
       </div>
       <div className="relative h-48 w-full rounded-lg overflow-hidden">
-        <LeafletMapComponent markerPosition={markerPosition ?? undefined} />
+        <LeafletMapComponent markers={markers} />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Button variant="outline">

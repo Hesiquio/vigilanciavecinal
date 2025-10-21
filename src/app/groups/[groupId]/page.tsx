@@ -172,6 +172,18 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
   
   const currentUserMemberInfo = members?.find(m => m.userId === user?.uid);
 
+  const groupMapMarkers = useMemo(() => {
+    if (!members) return [];
+    return members
+      .filter(member => member.isSharingLocation && member.location)
+      .map(member => {
+        const coords = parseLocation(member.location!);
+        return coords ? { ...coords, label: member.name } : null;
+      })
+      .filter(Boolean) as { lat: number; lng: number; label: string }[];
+  }, [members]);
+
+
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push("/login");
@@ -272,7 +284,7 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
                 </CardHeader>
                 <CardContent>
                     <div className="relative h-64 w-full rounded-lg overflow-hidden mb-4">
-                        <LeafletMapComponent center={mapCenter} />
+                        <LeafletMapComponent center={mapCenter} markers={groupMapMarkers}/>
                     </div>
                      <div className="flex items-center space-x-2">
                         <Switch 

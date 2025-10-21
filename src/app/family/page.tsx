@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirebase, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -170,26 +170,53 @@ export default function FamilyPage() {
   const { data: familyMembers, isLoading: isLoadingFamily } = useCollection<FamilyMember>(familyQuery);
 
   const acceptedMemberIds = useMemo(() => {
-    if (!familyMembers) return user ? [user.uid] : [];
-    const acceptedIds = familyMembers.filter(m => m.status === 'accepted').map(m => m.userId);
+    if (!familyMembers) return [];
+    return familyMembers.filter(m => m.status === 'accepted').map(m => m.userId);
+  }, [familyMembers]);
+  
+  const familyWithCurrentUserIds = useMemo(() => {
     if (user) {
-        acceptedIds.push(user.uid);
+        return [...acceptedMemberIds, user.uid];
     }
-    return acceptedIds;
-  }, [familyMembers, user]);
+    return acceptedMemberIds;
+  }, [acceptedMemberIds, user]);
 
 
   const familyAlertsQuery = useMemoFirebase(() => {
-    if (!firestore || acceptedMemberIds.length === 0) return null;
+    if (!firestore || familyWithCurrentUserIds.length === 0) return null;
     return query(
         collection(firestore, "sos-alerts"), 
-        where('userId', 'in', acceptedMemberIds),
+        where('userId', 'in', familyWithCurrentUserIds),
         orderBy("timestamp", "desc"),
         limit(1)
     );
-  }, [firestore, acceptedMemberIds]);
+  }, [firestore, familyWithCurrentUserIds]);
   const { data: familyAlerts, isLoading: isLoadingAlerts } = useCollection<SosAlert>(familyAlertsQuery);
 
+  const acceptedMembersProfilesQuery = useMemoFirebase(() => {
+    if (!firestore || acceptedMemberIds.length === 0) return null;
+    return query(collection(firestore, 'users'), where('__name__', 'in', acceptedMemberIds));
+  }, [firestore, acceptedMemberIds]);
+  const { data: acceptedMembersProfiles } = useCollection<UserProfile>(acceptedMembersProfilesQuery);
+
+  const familyMapMarkers = useMemo(() => {
+    const markers = [];
+    // Add current user's location
+    if (userProfile?.location) {
+        const coords = parseLocation(userProfile.location);
+        if (coords) markers.push({ ...coords, label: user.displayName || 'Tú' });
+    }
+    // Add accepted family members' locations
+    if (acceptedMembersProfiles) {
+        acceptedMembersProfiles.forEach(profile => {
+            if (profile.location) {
+                const coords = parseLocation(profile.location);
+                if (coords) markers.push({ ...coords, label: profile.name });
+            }
+        });
+    }
+    return markers;
+  }, [userProfile, acceptedMembersProfiles, user.displayName]);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -239,7 +266,6 @@ export default function FamilyPage() {
   
   const userProfileRef = useMemoFirebase(() => (firestore && user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
-  const mapCenter = useMemo(() => userProfile?.location ? parseLocation(userProfile.location) : undefined, [userProfile]);
 
   if (isUserLoading || !user || !firestore) {
     return (
@@ -285,7 +311,7 @@ export default function FamilyPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="relative h-64 w-full rounded-lg overflow-hidden">
-                        <LeafletMapComponent center={mapCenter} />
+                        <LeafletMapComponent center={userProfile?.location ? parseLocation(userProfile.location) : undefined} markers={familyMapMarkers} />
                     </div>
                 </CardContent>
             </Card>

@@ -147,6 +147,8 @@ export default function SettingsPage() {
   };
   
   const isLoading = isUserLoading || isProfileLoading;
+  
+  const mapMarkers = mapCenter ? [mapCenter] : [];
 
   if (isLoading || !user) {
     return (
@@ -202,7 +204,7 @@ export default function SettingsPage() {
               </div>
             ) : (
               <div className="relative h-96 w-full rounded-lg overflow-hidden">
-                <LeafletMapComponent center={mapCenter} markerPosition={mapCenter} />
+                <LeafletMapComponent center={mapCenter} markers={mapMarkers} />
               </div>
             )}
             <Button disabled>
