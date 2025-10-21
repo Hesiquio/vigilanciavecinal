@@ -178,9 +178,9 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
       .filter(member => member.isSharingLocation && member.location)
       .map(member => {
         const coords = parseLocation(member.location!);
-        return coords ? { ...coords, label: member.name } : null;
+        return coords ? { ...coords } : null;
       })
-      .filter(Boolean) as { lat: number; lng: number; label: string }[];
+      .filter(Boolean) as { lat: number; lng: number;}[];
   }, [members]);
 
 

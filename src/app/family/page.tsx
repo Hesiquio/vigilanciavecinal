@@ -206,18 +206,18 @@ export default function FamilyPage() {
     const markers = [];
     if (userProfile?.location) {
         const coords = parseLocation(userProfile.location);
-        if (coords) markers.push({ ...coords, label: user.displayName || 'Tú' });
+        if (coords) markers.push({ ...coords });
     }
     if (acceptedMembersProfiles) {
         acceptedMembersProfiles.forEach(profile => {
             if (profile.location) {
                 const coords = parseLocation(profile.location);
-                if (coords) markers.push({ ...coords, label: profile.name });
+                if (coords) markers.push({ ...coords });
             }
         });
     }
     return markers;
-  }, [userProfile, acceptedMembersProfiles, user.displayName]);
+  }, [userProfile, acceptedMembersProfiles]);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
