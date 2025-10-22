@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import React, { useState } from "react";
 import dynamic from 'next/dynamic';
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { UserProfile } from "@/types";
 
@@ -66,7 +66,7 @@ export function AlertCard({ alert }: AlertCardProps) {
   const [isNotifying, setIsNotifying] = useState(false);
 
   const userDocRef = useMemoFirebase(
-    () => (user && firestore ? React.doc(firestore, "users", user.uid) : null),
+    () => (user && firestore ? doc(firestore, "users", user.uid) : null),
     [user, firestore]
   );
   const { data: userProfile } = useDoc<UserProfile>(userDocRef);
