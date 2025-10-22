@@ -1,8 +1,5 @@
 
 
-
-
-
 export type UserProfile = {
   name: string;
   email: string;
@@ -37,7 +34,7 @@ export type GroupMember = {
     name: string;
     email: string;
     avatarUrl: string;
-    status: 'pending' | 'accepted' | 'requested';
+    status: 'pending' | 'accepted';
     isSharingLocation?: boolean;
     location?: string;
 }
@@ -45,7 +42,7 @@ export type GroupMember = {
 export type UserGroup = {
     id: string;
     name: string;
-    status?: 'pending' | 'accepted';
+    status: 'pending' | 'accepted';
 }
 
 export type ChatMessage = {

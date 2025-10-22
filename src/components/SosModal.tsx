@@ -96,7 +96,7 @@ export function SosModal({ user, trigger }: SosModalProps) {
   }
   
   const handleSelectAll = () => {
-    const allGroupIds = userGroups?.map(g => g.id) || [];
+    const allGroupIds = userGroups?.filter(g => g.status === 'accepted').map(g => g.id) || [];
     setAudience([...BASE_AUDIENCES, ...allGroupIds]);
   }
   
@@ -236,7 +236,7 @@ export function SosModal({ user, trigger }: SosModalProps) {
                               checked={audience.includes('neighbors')} 
                               onCheckedChange={(checked) => handleAudienceChange(!!checked, 'neighbors')} 
                           />
-                          <Label htmlFor="audience-neighbors" className="flex items-center gap-2 text-sm font-normal"><ShieldAlert className="h-4 w-4"/> Vecinos</Label>
+                          <Label htmlFor="audience-neighbors" className="flex items-center gap-2 text-sm font-normal"><Users className="h-4 w-4"/> Vecinos</Label>
                       </div>
                        <div className="flex items-center gap-2 rounded-md border p-3">
                           <Checkbox 
@@ -248,7 +248,7 @@ export function SosModal({ user, trigger }: SosModalProps) {
                       </div>
                   </div>
                   {isLoadingGroups && <p className="text-xs text-muted-foreground">Cargando grupos...</p>}
-                  {userGroups && userGroups.map(group => (
+                  {userGroups && userGroups.filter(g => g.status === 'accepted').map(group => (
                        <div key={group.id} className="flex items-center gap-2 rounded-md border p-3">
                           <Checkbox 
                               id={`audience-${group.id}`}

@@ -174,7 +174,7 @@
             "avatarUrl": { "type": "string", "description": "The avatar URL of the group member." },
             "status": {
                 "type": "string",
-                "enum": ["pending", "accepted", "requested"],
+                "enum": ["pending", "accepted"],
                 "description": "The status of the group membership."
             },
             "isSharingLocation": {
@@ -193,9 +193,14 @@
         "description": "A reference to a group a user is a member of.",
         "type": "object",
         "properties": {
-            "name": { "type": "string", "description": "The name of the group." }
+            "name": { "type": "string", "description": "The name of the group." },
+            "status": {
+                "type": "string",
+                "enum": ["pending", "accepted"],
+                "description": "The user's status in the group."
+            }
         },
-        "required": ["name"]
+        "required": ["name", "status"]
     },
     "ChatMessage": {
         "title": "Chat Message",
@@ -260,7 +265,7 @@
       "schema": { "$ref": "#/backend/entities/GroupMember" },
       "description": "Stores the members of a specific user-created group."
     },
-    "group-chats/{groupId}/messages/{messageId}": {
+    "/group-chats/{groupId}/messages/{messageId}": {
         "schema": { "$ref": "#/backend/entities/ChatMessage" },
         "description": "Messages within a specific manually-created group chat."
     }

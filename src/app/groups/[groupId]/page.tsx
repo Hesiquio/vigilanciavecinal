@@ -138,7 +138,7 @@ const GroupChat = ({ user, firestore, groupId, groupName }: { user: any, firesto
             <CardHeader>
                 <CardTitle>{groupName || "Chat de Grupo"}</CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 p-0">
+            <CardContent className="p-0 flex-1">
                 <div className="flex h-full flex-col">
                     <div className="flex-1 space-y-4 p-4 overflow-y-auto">
                         {isLoading && <p className="text-center">Cargando mensajes...</p>}

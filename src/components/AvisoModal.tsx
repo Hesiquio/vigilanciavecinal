@@ -64,7 +64,7 @@ export function AvisoModal({ user }: AvisoModalProps) {
   }
   
   const handleSelectAll = () => {
-    const allGroupIds = userGroups?.map(g => g.id) || [];
+    const allGroupIds = userGroups?.filter(g => g.status === 'accepted').map(g => g.id) || [];
     setAudience([...BASE_AUDIENCES, ...allGroupIds]);
   }
 
@@ -287,7 +287,7 @@ export function AvisoModal({ user }: AvisoModalProps) {
                         </div>
                     </div>
                     {isLoadingGroups && <p className="text-xs text-muted-foreground">Cargando grupos...</p>}
-                    {userGroups && userGroups.map(group => (
+                    {userGroups && userGroups.filter(g => g.status === 'accepted').map(group => (
                          <div key={group.id} className="flex items-center gap-2 rounded-md border p-3">
                             <Checkbox 
                                 id={`aviso-audience-${group.id}`}
