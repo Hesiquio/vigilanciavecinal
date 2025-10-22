@@ -323,22 +323,6 @@ export default function FamilyPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
             <FamilyChat user={user} firestore={firestore} />
-             <Card>
-                <CardHeader>
-                    <CardTitle>Añadir Familiar</CardTitle>
-                </CardHeader>
-                <CardContent className="flex gap-2">
-                    <Input 
-                        type="email" 
-                        placeholder="correo@ejemplo.com"
-                        value={searchEmail}
-                        onChange={(e) => setSearchEmail(e.target.value)} 
-                    />
-                    <Button onClick={handleSearchAndAdd} disabled={isSearching}>
-                        {isSearching ? <Loader className="animate-spin" /> : <UserPlus />}
-                    </Button>
-                </CardContent>
-            </Card>
         </div>
 
         <div className="space-y-6">
@@ -432,6 +416,23 @@ export default function FamilyPage() {
                             </ul>
                         )}
                     </div>
+                    
+                    <Separator className="my-6" />
+
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-medium text-muted-foreground">Añadir Familiar</h3>
+                         <div className="flex gap-2">
+                            <Input 
+                                type="email" 
+                                placeholder="correo@ejemplo.com"
+                                value={searchEmail}
+                                onChange={(e) => setSearchEmail(e.target.value)} 
+                            />
+                            <Button onClick={handleSearchAndAdd} disabled={isSearching}>
+                                {isSearching ? <Loader className="animate-spin" /> : <UserPlus />}
+                            </Button>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
         </div>
@@ -439,5 +440,3 @@ export default function FamilyPage() {
     </AppShell>
   );
 }
-
-    
