@@ -6,10 +6,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { collection, query, orderBy, where, Timestamp } from "firebase/firestore";
+import { collection, query, orderBy, where, Timestamp, limit } from "firebase/firestore";
 import type { SosAlert } from "@/components/AppShell";
 import type { Aviso } from "@/types";
-import { Loader, ShieldAlert, Megaphone, Calendar as CalendarIcon, Inbox } from "lucide-react";
+import { Loader, ShieldAlert, Megaphone, Calendar as CalendarIcon, Inbox, Info } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertCard } from "@/components/dashboard/AlertCard";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type ActivityItem = (SosAlert & { type: 'alert' }) | (Aviso & { type: 'aviso' });
 
@@ -49,7 +50,7 @@ export default function Home() {
 
 
   // Queries filtered by the selected date range
-  const alertsQuery = useMemoFirebase(() => {
+  const alertsByDateQuery = useMemoFirebase(() => {
       if (!firestore) return null;
       return query(
           collection(firestore, "sos-alerts"),
@@ -58,9 +59,9 @@ export default function Home() {
           orderBy("timestamp", "desc")
       );
   }, [firestore, startOfDay, endOfDay]);
-  const { data: alerts, isLoading: isLoadingAlerts, error: alertsError } = useCollection<SosAlert>(alertsQuery);
+  const { data: alertsByDate, isLoading: isLoadingAlertsByDate, error: alertsByDateError } = useCollection<SosAlert>(alertsByDateQuery);
   
-  const avisosQuery = useMemoFirebase(() => {
+  const avisosByDateQuery = useMemoFirebase(() => {
      if (!firestore) return null;
       return query(
           collection(firestore, "avisos"),
@@ -69,7 +70,21 @@ export default function Home() {
           orderBy("timestamp", "desc")
       );
   },[firestore, startOfDay, endOfDay]);
-  const { data: avisos, isLoading: isLoadingAvisos, error: avisosError } = useCollection<Aviso>(avisosQuery);
+  const { data: avisosByDate, isLoading: isLoadingAvisosByDate, error: avisosByDateError } = useCollection<Aviso>(avisosByDateQuery);
+
+  // Fallback queries for the 5 most recent items
+  const latestAlertsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, "sos-alerts"), orderBy("timestamp", "desc"), limit(5));
+  }, [firestore]);
+  const { data: latestAlerts, isLoading: isLoadingLatestAlerts } = useCollection<SosAlert>(latestAlertsQuery);
+
+  const latestAvisosQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, "avisos"), orderBy("timestamp", "desc"), limit(5));
+  }, [firestore]);
+  const { data: latestAvisos, isLoading: isLoadingLatestAvisos } = useCollection<Aviso>(latestAvisosQuery);
+
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -84,17 +99,27 @@ export default function Home() {
     }
   };
   
-  const combinedActivity: ActivityItem[] = useMemo(() => {
-    const typedAlerts: ActivityItem[] = alerts ? alerts.map(a => ({ ...a, type: 'alert' as const })) : [];
-    const typedAvisos: ActivityItem[] = avisos ? avisos.map(a => ({ ...a, type: 'aviso' as const })) : [];
+  const activityForDay: ActivityItem[] = useMemo(() => {
+    const typedAlerts: ActivityItem[] = alertsByDate ? alertsByDate.map(a => ({ ...a, type: 'alert' as const })) : [];
+    const typedAvisos: ActivityItem[] = avisosByDate ? avisosByDate.map(a => ({ ...a, type: 'aviso' as const })) : [];
 
     return [...typedAlerts, ...typedAvisos]
       .filter(item => item.timestamp)
       .sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
-  }, [alerts, avisos]);
+  }, [alertsByDate, avisosByDate]);
 
-  const isLoading = isLoadingAlerts || isLoadingAvisos;
-  const hasError = alertsError || avisosError;
+  const latestActivity: ActivityItem[] = useMemo(() => {
+    const typedAlerts: ActivityItem[] = latestAlerts ? latestAlerts.map(a => ({ ...a, type: 'alert' as const })) : [];
+    const typedAvisos: ActivityItem[] = latestAvisos ? latestAvisos.map(a => ({ ...a, type: 'aviso' as const })) : [];
+
+    return [...typedAlerts, ...typedAvisos]
+      .filter(item => item.timestamp)
+      .sort((a, b) => b.timestamp.seconds - a.timestamp.seconds)
+      .slice(0,5);
+  }, [latestAlerts, latestAvisos]);
+
+  const isLoading = isLoadingAlertsByDate || isLoadingAvisosByDate || isLoadingLatestAlerts || isLoadingLatestAvisos;
+  const hasError = alertsByDateError || avisosByDateError;
 
   const handleAlertClick = (item: ActivityItem) => {
     if (item.type === 'alert') {
@@ -109,6 +134,29 @@ export default function Home() {
         <p>Cargando...</p>
       </div>
     );
+  }
+
+  const renderActivityList = (activity: ActivityItem[]) => {
+    return activity.map((item) => (
+      <Card 
+          key={item.id} 
+          onClick={() => handleAlertClick(item)}
+          className={cn("w-full text-left transition-colors", item.type === 'alert' && "cursor-pointer hover:bg-secondary/50")}
+      >
+        <CardHeader className="flex-row items-start gap-4 space-y-0">
+             <div className={`shrink-0 rounded-full p-2 ${item.type === 'alert' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
+                {item.type === 'alert' ? <ShieldAlert className="h-5 w-5" /> : <Megaphone className="h-5 w-5" />}
+            </div>
+            <div className="flex-1">
+                <CardTitle className="text-base">{item.type === 'alert' ? item.category : item.title}</CardTitle>
+                <CardDescription className="text-xs">{formatTimestamp(item.timestamp)} por {item.userName}</CardDescription>
+            </div>
+        </CardHeader>
+        <CardContent>
+            <p className="text-sm text-muted-foreground line-clamp-3">{item.type === 'alert' ? item.message : item.description}</p>
+        </CardContent>
+      </Card>
+    ));
   }
 
   const renderContent = () => {
@@ -131,35 +179,32 @@ export default function Home() {
       );
     }
 
-    if (combinedActivity.length === 0) {
+    if (activityForDay.length > 0) {
+      return renderActivityList(activityForDay);
+    }
+    
+    // Fallback to latest activity
+    if (latestActivity.length > 0) {
       return (
-         <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed rounded-lg text-center p-4">
-            <Inbox className="h-8 w-8 text-muted-foreground" />
-            <p className="mt-2 text-sm text-muted-foreground">No hay actividad para la fecha seleccionada.</p>
-          </div>
-      );
+        <>
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Sin Actividad</AlertTitle>
+            <AlertDescription>
+              No hubo actividad en la fecha seleccionada. Mostrando las 5 más recientes.
+            </AlertDescription>
+          </Alert>
+          {renderActivityList(latestActivity)}
+        </>
+      )
     }
 
-    return combinedActivity.map((item) => (
-      <Card 
-          key={item.id} 
-          onClick={() => handleAlertClick(item)}
-          className={cn("w-full text-left transition-colors", item.type === 'alert' && "cursor-pointer hover:bg-secondary/50")}
-      >
-        <CardHeader className="flex-row items-start gap-4 space-y-0">
-             <div className={`shrink-0 rounded-full p-2 ${item.type === 'alert' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
-                {item.type === 'alert' ? <ShieldAlert className="h-5 w-5" /> : <Megaphone className="h-5 w-5" />}
-            </div>
-            <div className="flex-1">
-                <CardTitle className="text-base">{item.type === 'alert' ? item.category : item.title}</CardTitle>
-                <CardDescription className="text-xs">{formatTimestamp(item.timestamp)} por {item.userName}</CardDescription>
-            </div>
-        </CardHeader>
-        <CardContent>
-            <p className="text-sm text-muted-foreground line-clamp-3">{item.type === 'alert' ? item.message : item.description}</p>
-        </CardContent>
-      </Card>
-    ));
+    return (
+      <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed rounded-lg text-center p-4">
+         <Inbox className="h-8 w-8 text-muted-foreground" />
+         <p className="mt-2 text-sm text-muted-foreground">No hay actividad para mostrar.</p>
+       </div>
+   );
   }
 
 
@@ -212,3 +257,4 @@ export default function Home() {
   );
 }
 
+    
