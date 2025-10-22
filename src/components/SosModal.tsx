@@ -1,8 +1,7 @@
 
-
 "use client";
 
-import { useState, useEffect, ReactElement } from "react";
+import { useState, useEffect, ReactElement, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
 import type { UserProfile, UserGroup } from "@/types";
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 
 type SosModalProps = {
     user: User;
@@ -50,6 +50,12 @@ export function SosModal({ user, trigger }: SosModalProps) {
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
 
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+
   const userDocRef = useMemoFirebase(
     () => (user && firestore ? doc(firestore, "users", user.uid) : null),
     [user, firestore]
@@ -64,7 +70,29 @@ export function SosModal({ user, trigger }: SosModalProps) {
 
 
   useEffect(() => {
+    // Function to get permissions and stream
+    const getCameraPermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        streamRef.current = stream;
+        setHasCameraPermission(true);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Acceso a Cámara Denegado',
+          description: 'Por favor, habilita los permisos de cámara en tu navegador para adjuntar video.',
+        });
+      }
+    };
+
+    // When the dialog opens, get permissions
     if (isOpen) {
+      getCameraPermission();
       setLocation("Obteniendo ubicación...");
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -76,7 +104,7 @@ export function SosModal({ user, trigger }: SosModalProps) {
             setLocation("No se pudo obtener la ubicación.");
             toast({
                 title: "Error de Ubicación",
-                description: "No se pudo obtener la ubicación. Por favor, ingrésala manually.",
+                description: "No se pudo obtener la ubicación. Por favor, ingrésala manualmente.",
                 variant: "destructive"
             })
           }
@@ -84,8 +112,17 @@ export function SosModal({ user, trigger }: SosModalProps) {
       } else {
         setLocation("Geolocalización no soportada.");
       }
+    } else {
+      // When the dialog closes, stop the camera stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      setHasCameraPermission(null);
+      setIsRecording(false);
     }
-  }, [isOpen, toast]);
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
   
   const handleAudienceChange = (checked: boolean, value: string) => {
     setAudience(prev => 
@@ -190,13 +227,21 @@ export function SosModal({ user, trigger }: SosModalProps) {
         setIsSending(false);
     }
   };
+  
+  const handleToggleRecording = () => {
+      if (!hasCameraPermission) {
+          toast({ variant: "destructive", title: "Cámara no disponible", description: "No se puede grabar sin acceso a la cámara." });
+          return;
+      }
+      setIsRecording(prev => !prev);
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         {trigger}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-headline text-destructive">
             <Siren className="h-6 w-6" />
@@ -275,12 +320,31 @@ export function SosModal({ user, trigger }: SosModalProps) {
             />
             <MessageCircle className="absolute top-3 right-3 h-5 w-5 text-muted-foreground" />
           </div>
+
+           {/* Video Section */}
+            <div className="space-y-2">
+                 <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted playsInline />
+                 {hasCameraPermission === false && (
+                    <Alert variant="destructive">
+                        <AlertTitle>Acceso a Cámara Requerido</AlertTitle>
+                        <AlertDescription>
+                            Habilita el permiso de cámara en tu navegador para poder grabar video.
+                        </AlertDescription>
+                    </Alert>
+                 )}
+            </div>
+
           <div className="grid grid-cols-2 gap-2">
               <Button variant="outline" className="flex items-center justify-center gap-2" disabled>
                   <Mic className="h-4 w-4" /> Grabar Audio
               </Button>
-              <Button variant="outline" className="flex items-center justify-center gap-2" disabled>
-                  <Video className="h-4 w-4" /> Grabar Video
+              <Button 
+                variant={isRecording ? "destructive" : "outline"} 
+                className="flex items-center justify-center gap-2"
+                onClick={handleToggleRecording}
+                disabled={hasCameraPermission === false}
+               >
+                  <Video className="h-4 w-4" /> {isRecording ? "Detener Grabación" : "Grabar Video"}
               </Button>
           </div>
         </div>
@@ -295,5 +359,3 @@ export function SosModal({ user, trigger }: SosModalProps) {
     </Dialog>
   );
 }
-
-    

@@ -65,3 +65,18 @@ export type Aviso = {
   audience: string[];
   timestamp: any;
 }
+
+export interface SosAlert {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatarUrl: string;
+  timestamp: {
+    seconds: number;
+    nanoseconds: number;
+  };
+  location: string;
+  message: string;
+  category: "Robo" | "Accidentes" | "Desastres Naturales" | "Personas Sospechosas";
+  videoUrl?: string; // Optional URL for the recorded video
+}
