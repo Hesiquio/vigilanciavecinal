@@ -1,5 +1,6 @@
 
 
+
 export type UserProfile = {
   name: string;
   email: string;
@@ -78,5 +79,6 @@ export interface SosAlert {
   location: string;
   message: string;
   category: "Robo" | "Accidentes" | "Desastres Naturales" | "Personas Sospechosas";
+  audience: string[];
   videoUrl?: string; // Optional URL for the recorded video
 }
