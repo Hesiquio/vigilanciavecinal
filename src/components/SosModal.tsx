@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Siren, Mic, Video, MapPin, Send, MessageCircle, ShieldAlert, Users, Heart, Loader, Camera } from "lucide-react";
+import { Siren, Mic, MapPin, Send, MessageCircle, ShieldAlert, Users, Heart, Loader, Camera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "./ui/input";
 import { useFirebase, useDoc, useMemoFirebase, useCollection } from "@/firebase";
@@ -50,12 +50,6 @@ export function SosModal({ user, trigger }: SosModalProps) {
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
 
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-
-
   const userDocRef = useMemoFirebase(
     () => (user && firestore ? doc(firestore, "users", user.uid) : null),
     [user, firestore]
@@ -69,7 +63,7 @@ export function SosModal({ user, trigger }: SosModalProps) {
   const { data: userGroups, isLoading: isLoadingGroups } = useCollection<UserGroup>(userGroupsQuery);
 
 
-  // Get location when modal opens, but not camera
+  // Get location when modal opens
   useEffect(() => {
     if (isOpen) {
       setLocation("Obteniendo ubicación...");
@@ -83,7 +77,7 @@ export function SosModal({ user, trigger }: SosModalProps) {
             setLocation("No se pudo obtener la ubicación.");
             toast({
                 title: "Error de Ubicación",
-                description: "No se pudo obtener la ubicación. Por favor, ingrésala manually.",
+                description: "No se pudo obtener la ubicación. Por favor, ingrésala manualmente.",
                 variant: "destructive"
             })
           }
@@ -91,14 +85,6 @@ export function SosModal({ user, trigger }: SosModalProps) {
       } else {
         setLocation("Geolocalización no soportada.");
       }
-    } else {
-        // Cleanup when modal closes
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-        }
-        setHasCameraPermission(null);
-        setIsRecording(false);
     }
      // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -114,26 +100,6 @@ export function SosModal({ user, trigger }: SosModalProps) {
     setAudience([...BASE_AUDIENCES, ...allGroupIds]);
   }
   
-  const handleEnableCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        streamRef.current = stream;
-        setHasCameraPermission(true);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (error) {
-        console.error('Error accessing camera:', error);
-        setHasCameraPermission(false);
-        toast({
-          variant: 'destructive',
-          title: 'Acceso a Cámara Denegado',
-          description: 'Habilita los permisos de cámara en tu navegador para adjuntar video.',
-        });
-      }
-  }
-
-
   const postMessageToChats = async (alertId: string, alertMessage: string, alertCategory: string) => {
       if (!firestore) return;
 
@@ -200,7 +166,7 @@ export function SosModal({ user, trigger }: SosModalProps) {
             category: category as SosAlertType['category'],
             audience,
             timestamp: serverTimestamp(),
-            // videoUrl will be added later when we implement video upload
+            // imageUrl and audioUrl will be added later
         };
 
         // Create the alert document
@@ -227,49 +193,6 @@ export function SosModal({ user, trigger }: SosModalProps) {
         setIsSending(false);
     }
   };
-  
-  const handleToggleRecording = () => {
-      if (!hasCameraPermission) {
-          toast({ variant: "destructive", title: "Cámara no disponible", description: "Primero debes habilitar la cámara." });
-          return;
-      }
-      setIsRecording(prev => !prev);
-  }
-  
-  const renderVideoButton = () => {
-    if (hasCameraPermission === null) {
-        return (
-             <Button 
-                variant="outline"
-                className="flex items-center justify-center gap-2"
-                onClick={handleEnableCamera}
-               >
-                  <Camera className="h-4 w-4" /> Habilitar Cámara
-              </Button>
-        )
-    }
-    if (hasCameraPermission === false) {
-        return (
-             <Button 
-                variant="outline"
-                className="flex items-center justify-center gap-2"
-                disabled
-               >
-                  <Camera className="h-4 w-4" /> Cámara no disponible
-              </Button>
-        )
-    }
-    // Camera is enabled
-    return (
-        <Button 
-            variant={isRecording ? "destructive" : "outline"} 
-            className="flex items-center justify-center gap-2"
-            onClick={handleToggleRecording}
-            >
-            <Video className="h-4 w-4" /> {isRecording ? "Detener Grabación" : "Grabar Video"}
-        </Button>
-    )
-  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -356,24 +279,13 @@ export function SosModal({ user, trigger }: SosModalProps) {
             <MessageCircle className="absolute top-3 right-3 h-5 w-5 text-muted-foreground" />
           </div>
 
-           {/* Video Section */}
-            <div className="space-y-2">
-                 <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted playsInline />
-                 {hasCameraPermission === false && (
-                    <Alert variant="destructive">
-                        <AlertTitle>Acceso a Cámara Denegado</AlertTitle>
-                        <AlertDescription>
-                            No se puede usar la función de video sin acceso a la cámara.
-                        </AlertDescription>
-                    </Alert>
-                 )}
-            </div>
-
           <div className="grid grid-cols-2 gap-2">
               <Button variant="outline" className="flex items-center justify-center gap-2" disabled>
+                  <Camera className="h-4 w-4" /> Adjuntar Foto
+              </Button>
+               <Button variant="outline" className="flex items-center justify-center gap-2" disabled>
                   <Mic className="h-4 w-4" /> Grabar Audio
               </Button>
-             {renderVideoButton()}
           </div>
         </div>
         <DialogFooter>

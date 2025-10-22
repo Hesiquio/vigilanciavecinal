@@ -71,10 +71,15 @@
             "description": "The category of the SOS alert.",
             "enum": ["Robo", "Accidentes", "Desastres Naturales", "Personas Sospechosas"]
         },
-        "videoUrl": {
+        "imageUrl": {
             "type": "string",
             "format": "uri",
-            "description": "Optional URL to a video recording of the incident."
+            "description": "Optional URL to an image of the incident."
+        },
+        "audioUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Optional URL to an audio recording of the incident."
         },
         "audience": {
           "type": "array",
