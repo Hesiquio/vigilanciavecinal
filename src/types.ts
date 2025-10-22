@@ -2,6 +2,7 @@
 
 
 
+
 export type UserProfile = {
   name: string;
   email: string;
@@ -10,6 +11,7 @@ export type UserProfile = {
   location?: string;
   verificationTimestamp?: any;
   isSharingLocationWithFamily?: boolean;
+  familyName?: string;
 };
 
 export type FamilyMember = {
@@ -84,3 +86,4 @@ export interface SosAlert {
   imageUrl?: string; // Optional URL for an attached image
   audioUrl?: string; // Optional URL for a recorded audio clip
 }
+

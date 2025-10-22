@@ -10,10 +10,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy, updateDoc, setDoc } from "firebase/firestore";
 import { doc } from "firebase/firestore";
 import type { FamilyMember, UserProfile, ChatMessage } from "@/types";
-import { Loader, UserPlus, Check, Send, AlertCircle, XCircle, MapPin, MapPinOff } from "lucide-react";
+import { Loader, UserPlus, Check, Send, AlertCircle, XCircle, MapPin, MapPinOff, Edit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import dynamic from 'next/dynamic';
 import {
@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
@@ -106,7 +107,7 @@ async function removeOrCancelFamilyMember(db: any, currentUserId: string, member
 }
 
 
-const FamilyChat = ({ user, firestore }: { user: any, firestore: any }) => {
+const FamilyChat = ({ user, firestore, userProfile, onUpdateName }: { user: any, firestore: any, userProfile: UserProfile | null, onUpdateName: (name: string) => Promise<void> }) => {
     const familyId = user.uid; // Use the user's own UID as the ID for their family chat
     const messagesRef = useMemoFirebase(
         () => firestore ? query(collection(firestore, `family-chats/${familyId}/messages`), orderBy("timestamp", "asc")) : null,
@@ -115,10 +116,17 @@ const FamilyChat = ({ user, firestore }: { user: any, firestore: any }) => {
     const { data: messages, isLoading } = useCollection<ChatMessage>(messagesRef);
     const [newMessage, setNewMessage] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [isNameDialogOpen, setIsNameDialogOpen] = useState(false);
+    const [newFamilyName, setNewFamilyName] = useState("");
+    const [isSavingName, setIsSavingName] = useState(false);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
+
+    useEffect(() => {
+        setNewFamilyName(userProfile?.familyName || getFamilyName(true));
+    }, [userProfile]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -134,50 +142,93 @@ const FamilyChat = ({ user, firestore }: { user: any, firestore: any }) => {
         setNewMessage("");
     };
 
-    const getFamilyName = () => {
+    const getFamilyName = (getDefault = false) => {
+        if (userProfile?.familyName && !getDefault) {
+            return userProfile.familyName;
+        }
         const name = user?.displayName || "";
         const lastName = name.split(' ').pop();
         return lastName ? `Familia ${lastName}` : "Chat Familiar";
     }
+
+    const handleSaveName = async () => {
+        setIsSavingName(true);
+        await onUpdateName(newFamilyName);
+        setIsSavingName(false);
+        setIsNameDialogOpen(false);
+    }
     
     return (
-        <Card className="flex flex-col h-[400px]">
-            <CardHeader>
-                <CardTitle>{getFamilyName()}</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 p-0">
-                <div className="flex h-full flex-col">
-                    <div className="flex-1 space-y-4 p-4 overflow-y-auto">
-                        {isLoading && <p className="text-center">Cargando mensajes...</p>}
-                        {!isLoading && messages && messages.map((msg) => (
-                            <div key={msg.id} className={cn("flex items-start gap-2", msg.userId === user.uid ? "justify-end" : "justify-start")}>
-                                {msg.userId !== 'system' && msg.userId !== user.uid && <Avatar className="h-8 w-8"><AvatarImage src={msg.userAvatarUrl} /><AvatarFallback>{msg.userName?.charAt(0)}</AvatarFallback></Avatar>}
-                                <div className={cn("flex flex-col gap-1", msg.userId === user.uid ? "items-end" : "items-start")}>
-                                {msg.userId === 'system' ? (
-                                    <div className="w-full text-center text-xs text-muted-foreground italic my-2">
-                                        <p>{msg.text.split('\n').map((line, i) => <span key={i}>{line}<br/></span>)}</p>
-                                    </div>
-                                ) : (
-                                    <>
-                                        {msg.userId !== user.uid && <p className="text-xs text-muted-foreground px-2">{msg.userName}</p>}
-                                        <div className={cn("max-w-xs rounded-lg p-3", msg.userId === user.uid ? "bg-primary text-primary-foreground" : "bg-secondary")}>
-                                            <p className="text-sm">{msg.text}</p>
+        <>
+            <Card className="flex flex-col h-[400px]">
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                        {getFamilyName()}
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsNameDialogOpen(true)}>
+                            <Edit className="h-4 w-4" />
+                        </Button>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 p-0">
+                    <div className="flex h-full flex-col">
+                        <div className="flex-1 space-y-4 p-4 overflow-y-auto">
+                            {isLoading && <p className="text-center">Cargando mensajes...</p>}
+                            {!isLoading && messages && messages.map((msg) => (
+                                <div key={msg.id} className={cn("flex items-start gap-2", msg.userId === user.uid ? "justify-end" : "justify-start")}>
+                                    {msg.userId !== 'system' && msg.userId !== user.uid && <Avatar className="h-8 w-8"><AvatarImage src={msg.userAvatarUrl} /><AvatarFallback>{msg.userName?.charAt(0)}</AvatarFallback></Avatar>}
+                                    <div className={cn("flex flex-col gap-1", msg.userId === user.uid ? "items-end" : "items-start")}>
+                                    {msg.userId === 'system' ? (
+                                        <div className="w-full text-center text-xs text-muted-foreground italic my-2">
+                                            <p>{msg.text.split('\n').map((line, i) => <span key={i}>{line}<br/></span>)}</p>
                                         </div>
-                                    </>
-                                )}
+                                    ) : (
+                                        <>
+                                            {msg.userId !== user.uid && <p className="text-xs text-muted-foreground px-2">{msg.userName}</p>}
+                                            <div className={cn("max-w-xs rounded-lg p-3", msg.userId === user.uid ? "bg-primary text-primary-foreground" : "bg-secondary")}>
+                                                <p className="text-sm">{msg.text}</p>
+                                            </div>
+                                        </>
+                                    )}
+                                    </div>
+                                    {msg.userId !== 'system' && msg.userId === user.uid && <Avatar className="h-8 w-8"><AvatarImage src={user.photoURL || undefined} /><AvatarFallback>TÚ</AvatarFallback></Avatar>}
                                 </div>
-                                {msg.userId !== 'system' && msg.userId === user.uid && <Avatar className="h-8 w-8"><AvatarImage src={user.photoURL || undefined} /><AvatarFallback>TÚ</AvatarFallback></Avatar>}
-                            </div>
-                        ))}
-                        <div ref={messagesEndRef} />
+                            ))}
+                            <div ref={messagesEndRef} />
+                        </div>
+                        <form onSubmit={handleSendMessage} className="flex items-center gap-2 border-t p-4">
+                            <Input placeholder="Escribe un mensaje..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} />
+                            <Button type="submit"><Send /></Button>
+                        </form>
                     </div>
-                    <form onSubmit={handleSendMessage} className="flex items-center gap-2 border-t p-4">
-                        <Input placeholder="Escribe un mensaje..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} />
-                        <Button type="submit"><Send /></Button>
-                    </form>
-                </div>
-            </CardContent>
-        </Card>
+                </CardContent>
+            </Card>
+            <Dialog open={isNameDialogOpen} onOpenChange={setIsNameDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Editar Nombre de la Familia</DialogTitle>
+                        <DialogDescription>
+                            Elige un nombre para tu chat familiar.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="family-name">Nombre de la Familia</Label>
+                            <Input
+                                id="family-name"
+                                value={newFamilyName}
+                                onChange={(e) => setNewFamilyName(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsNameDialogOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleSaveName} disabled={isSavingName}>
+                            {isSavingName ? <Loader className="animate-spin" /> : "Guardar Cambios"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 };
 
@@ -309,6 +360,17 @@ export default function FamilyPage() {
     }
 };
 
+const handleUpdateFamilyName = async (name: string) => {
+    if (!userProfileRef) return;
+    try {
+        await setDoc(userProfileRef, { familyName: name }, { merge: true });
+        toast({ title: "Nombre actualizado", description: "El nombre de tu familia ha sido guardado." });
+    } catch (error) {
+        console.error("Error updating family name:", error);
+        toast({ title: "Error", description: "No se pudo guardar el nuevo nombre.", variant: "destructive" });
+    }
+};
+
   
   if (isUserLoading || isProfileLoading || !user || !firestore) {
     return (
@@ -322,7 +384,7 @@ export default function FamilyPage() {
     <AppShell user={user} onSignOut={handleSignOut}>
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
-            <FamilyChat user={user} firestore={firestore} />
+            <FamilyChat user={user} firestore={firestore} userProfile={userProfile} onUpdateName={handleUpdateFamilyName} />
         </div>
 
         <div className="space-y-6">

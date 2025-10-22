@@ -32,6 +32,10 @@
         "verificationTimestamp": {
             "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp",
             "description": "The timestamp when the user last verified their zone."
+        },
+        "familyName": {
+            "type": "string",
+            "description": "The custom name for the user's family group."
         }
       },
       "required": ["name", "email"]
@@ -76,6 +80,14 @@
         },
         "timestamp": {
           "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp"
+        },
+        "imageUrl": {
+            "type": "string",
+            "description": "URL for an attached image for the SOS alert."
+        },
+        "audioUrl": {
+            "type": "string",
+            "description": "URL for a recorded audio clip for the SOS alert."
         }
       },
       "required": ["userId", "userName", "message", "location", "category", "audience", "timestamp"]
