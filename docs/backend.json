@@ -1,270 +1,307 @@
-
 {
   "entities": {
-    "UserProfile": {
+    "User": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "User Profile",
-      "description": "Represents a user's public profile information.",
+      "title": "User",
       "type": "object",
+      "description": "Represents a user of the Colonia Segura application.",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user entity."
+        },
         "name": {
           "type": "string",
-          "description": "The user's display name."
-        },
-        "avatarUrl": {
-          "type": "string",
-          "description": "URL for the user's avatar image.",
-          "format": "uri"
+          "description": "The user's full name."
         },
         "email": {
           "type": "string",
           "description": "The user's email address.",
           "format": "email"
         },
-        "postalCode": {
+        "phone": {
           "type": "string",
-          "description": "The user's postal code for location-based grouping."
+          "description": "The user's phone number."
         },
-        "location": {
-            "type": "string",
-            "description": "The user's last known location as a string 'Lat: XX.XXXX, Lon: YY.YYYY'."
-        },
-        "verificationTimestamp": {
-            "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp",
-            "description": "The timestamp when the user last verified their zone."
-        },
-        "isSharingLocationWithFamily": {
-            "type": "boolean",
-            "description": "Whether the user is currently sharing their location with their family."
+        "coloniaId": {
+          "type": "string",
+          "description": "Reference to Colonia. (Relationship: Colonia 1:N User)"
         }
       },
-      "required": ["name", "email"]
+      "required": [
+        "id",
+        "name",
+        "email",
+        "phone",
+        "coloniaId"
+      ]
+    },
+    "Colonia": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Colonia",
+      "type": "object",
+      "description": "Represents a neighborhood (colonia) within the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the colonia entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the colonia."
+        },
+        "location": {
+          "type": "string",
+          "description": "The general location of the Colonia."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
     },
     "SosAlert": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "SOS Alert",
-      "description": "Represents an SOS alert sent by a user.",
+      "title": "SosAlert",
       "type": "object",
+      "description": "Represents an SOS alert sent by a user.",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the SOS alert entity."
+        },
         "userId": {
           "type": "string",
-          "description": "The ID of the user who sent the alert."
+          "description": "Reference to User. (Relationship: User 1:N SosAlert) The user who sent the SOS alert."
         },
-        "userName": {
+        "timestamp": {
           "type": "string",
-          "description": "The name of the user who sent the alert."
-        },
-        "userAvatarUrl": {
-          "type": "string",
-          "description": "The avatar URL of the user who sent the alert."
-        },
-        "message": {
-          "type": "string",
-          "description": "Text message accompanying the SOS alert."
+          "description": "The date and time the SOS alert was sent.",
+          "format": "date-time"
         },
         "location": {
           "type": "string",
-          "description": "Location from where the alert was sent."
+          "description": "The location of the user when the SOS alert was sent (e.g., latitude, longitude)."
         },
-        "category": {
-            "type": "string",
-            "description": "The category of the SOS alert.",
-            "enum": ["Robo", "Accidentes", "Desastres Naturales", "Personas Sospechosas"]
-        },
-        "imageUrl": {
-            "type": "string",
-            "format": "uri",
-            "description": "Optional URL to an image of the incident."
-        },
-        "audioUrl": {
-            "type": "string",
-            "format": "uri",
-            "description": "Optional URL to an audio recording of the incident."
-        },
-        "audience": {
-          "type": "array",
-          "description": "The target audience for the alert (e.g., 'family', 'neighbors').",
-          "items": {
-            "type": "string"
-          }
-        },
-        "timestamp": {
-          "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp"
-        }
-      },
-      "required": ["userId", "userName", "message", "location", "category", "audience", "timestamp"]
-    },
-    "Aviso": {
-      "title": "Aviso",
-      "description": "Represents a non-urgent announcement for meetings, events, etc.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "userName": { "type": "string" },
-        "userAvatarUrl": { "type": "string" },
-        "title": { "type": "string" },
-        "description": { "type": "string" },
-        "eventTimestamp": { "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp" },
-        "audience": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "timestamp": { "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp" }
-      },
-      "required": ["userId", "userName", "title", "description", "eventTimestamp", "audience", "timestamp"]
-    },
-    "SurveillanceZone": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Surveillance Zone",
-      "description": "Represents a geographical area for neighborhood watch.",
-      "type": "object",
-      "properties": {
-        "name": {
+        "message": {
           "type": "string",
-          "description": "Name of the surveillance zone (e.g., 'Colonia Centro')."
+          "description": "The text message accompanying the SOS alert."
         },
-        "polygon": {
-          "type": "array",
-          "description": "An array of coordinates defining the zone's boundary.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "lat": { "type": "number" },
-              "lng": { "type": "number" }
-            },
-            "required": ["lat", "lng"]
-          }
-        }
-      },
-      "required": ["name", "polygon"]
-    },
-    "FamilyMember": {
-      "title": "Family Member",
-      "description": "Represents a family member relationship between two users.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string", "description": "The UID of the family member." },
-        "name": { "type": "string", "description": "The name of the family member." },
-        "email": { "type": "string", "description": "The email of the family member." },
-        "avatarUrl": { "type": "string", "description": "The avatar URL of the family member." },
-        "status": {
+        "audioId": {
           "type": "string",
-          "enum": ["pending", "accepted", "requested"],
-          "description": "The status of the family connection."
+          "description": "Reference to Audio. (Relationship: Audio 1:1 SosAlert).  The ID of the associated audio recording (if any)."
+        },
+        "photoId": {
+          "type": "string",
+          "description": "Reference to Photo. (Relationship: Photo 1:1 SosAlert). The ID of the associated photo (if any)."
         }
       },
-      "required": ["userId", "name", "email", "status"]
-    },
-    "Group": {
-        "title": "Group",
-        "description": "Represents a user-created group.",
-        "type": "object",
-        "properties": {
-            "name": { "type": "string", "description": "The name of the group." },
-            "ownerId": { "type": "string", "description": "The UID of the user who owns the group." }
-        },
-        "required": ["name", "ownerId"]
-    },
-    "GroupMember": {
-        "title": "Group Member",
-        "description": "Represents a member of a user-created group.",
-        "type": "object",
-        "properties": {
-            "userId": { "type": "string", "description": "The UID of the group member." },
-            "name": { "type": "string", "description": "The name of the group member." },
-            "email": { "type": "string", "description": "The email of the group member." },
-            "avatarUrl": { "type": "string", "description": "The avatar URL of the group member." },
-            "status": {
-                "type": "string",
-                "enum": ["pending", "accepted", "requested"],
-                "description": "The status of the group membership."
-            },
-            "isSharingLocation": {
-                "type": "boolean",
-                "description": "Whether the member is currently sharing their location with the group."
-            },
-             "location": {
-                "type": "string",
-                "description": "The user's last known location as a string 'Lat: XX.XXXX, Lon: YY.YYYY'."
-            }
-        },
-        "required": ["userId", "name", "email", "status"]
-    },
-    "UserGroup": {
-        "title": "User Group",
-        "description": "A reference to a group a user is a member of.",
-        "type": "object",
-        "properties": {
-            "name": { "type": "string", "description": "The name of the group." }
-        },
-        "required": ["name"]
+      "required": [
+        "id",
+        "userId",
+        "timestamp",
+        "location"
+      ]
     },
     "ChatMessage": {
-        "title": "Chat Message",
-        "description": "A single message within a chat.",
-        "type": "object",
-        "properties": {
-            "text": { "type": "string" },
-            "userId": { "type": "string" },
-            "userName": { "type": "string" },
-            "userAvatarUrl": { "type": "string" },
-            "timestamp": { "$ref": "https://firebase.google.com/docs/reference/node/firebase.firestore.FieldValue#serverTimestamp" },
-            "alertId": { "type": "string", "description": "Optional ID of the SOS alert related to this message." }
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatMessage",
+      "type": "object",
+      "description": "Represents a chat message within the colonia chat.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the chat message entity."
         },
-        "required": ["text", "userId", "userName", "timestamp"]
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N ChatMessage) The user who sent the chat message."
+        },
+        "coloniaId": {
+          "type": "string",
+          "description": "Reference to Colonia. (Relationship: Colonia 1:N ChatMessage) The colonia to which the chat message belongs."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time the chat message was sent.",
+          "format": "date-time"
+        },
+        "message": {
+          "type": "string",
+          "description": "The text of the chat message."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "coloniaId",
+        "timestamp",
+        "message"
+      ]
+    },
+    "Audio": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Audio",
+      "type": "object",
+      "description": "Represents an audio recording associated with an SOS alert.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the audio entity."
+        },
+        "fileUrl": {
+          "type": "string",
+          "description": "The URL where the audio file is stored."
+        },
+        "duration": {
+          "type": "number",
+          "description": "The duration of the audio recording in seconds."
+        }
+      },
+      "required": [
+        "id",
+        "fileUrl",
+        "duration"
+      ]
+    },
+    "Photo": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Photo",
+      "type": "object",
+      "description": "Represents a photo associated with an SOS alert.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the photo entity."
+        },
+        "fileUrl": {
+          "type": "string",
+          "description": "The URL where the photo file is stored."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the photo."
+        }
+      },
+      "required": [
+        "id",
+        "fileUrl"
+      ]
     }
   },
   "auth": {
     "providers": [
       "password",
-      "anonymous",
-      "google.com"
+      "anonymous"
     ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": { "$ref": "#/backend/entities/UserProfile" },
-      "description": "Stores public user profiles. Writable by the user themselves."
-    },
-    "/users/{userId}/familyMembers/{memberId}": {
-      "schema": { "$ref": "#/backend/entities/FamilyMember" },
-      "description": "Subcollection storing the family members of a user."
-    },
-     "/users/{userId}/groups/{groupId}": {
-      "schema": { "$ref": "#/backend/entities/UserGroup" },
-      "description": "Subcollection storing references to groups a user is a member of."
-    },
-    "/sos-alerts/{alertId}": {
-      "schema": { "$ref": "#/backend/entities/SosAlert" },
-      "description": "Stores all SOS alerts. Writable by any authenticated user. This collection is processed by backend logic to populate user feeds."
-    },
-     "/avisos/{avisoId}": {
-      "schema": { "$ref": "#/backend/entities/Aviso" },
-      "description": "Stores all non-urgent announcements."
-    },
-    "/surveillance-zones/{zoneId}": {
-      "schema": { "$ref": "#/backend/entities/SurveillanceZone" },
-      "description": "Stores the geographical boundaries for each neighborhood watch group."
-    },
-    "/family-chats/{familyId}/messages/{messageId}": {
-        "schema": { "$ref": "#/backend/entities/ChatMessage" },
-        "description": "Messages within a specific family chat."
-    },
-    "/neighborhood-chats/{postalCode}/messages/{messageId}": {
-        "schema": { "$ref": "#/backend/entities/ChatMessage" },
-        "description": "Messages within a specific neighborhood chat, grouped by postal code."
-    },
-    "/groups/{groupId}": {
-      "schema": { "$ref": "#/backend/entities/Group" },
-      "description": "Stores metadata for user-created groups."
-    },
-    "/groups/{groupId}/members/{memberId}": {
-      "schema": { "$ref": "#/backend/entities/GroupMember" },
-      "description": "Stores the members of a specific user-created group."
-    },
-    "group-chats/{groupId}/messages/{messageId}": {
-        "schema": { "$ref": "#/backend/entities/ChatMessage" },
-        "description": "Messages within a specific manually-created group chat."
-    }
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information.  Path-based ownership for user data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/colonias/{coloniaId}",
+        "definition": {
+          "entityName": "Colonia",
+          "schema": {
+            "$ref": "#/backend/entities/Colonia"
+          },
+          "description": "Stores information about each colonia (neighborhood).",
+          "params": [
+            {
+              "name": "coloniaId",
+              "description": "The unique identifier of the colonia."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/sos_alerts/{sosAlertId}",
+        "definition": {
+          "entityName": "SosAlert",
+          "schema": {
+            "$ref": "#/backend/entities/SosAlert"
+          },
+          "description": "Stores SOS alerts sent by users. Located under the user document to simplify ownership-based security rules. Path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user who sent the alert."
+            },
+            {
+              "name": "sosAlertId",
+              "description": "The unique identifier of the SOS alert."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/colonias/{coloniaId}/chat_messages/{chatMessageId}",
+        "definition": {
+          "entityName": "ChatMessage",
+          "schema": {
+            "$ref": "#/backend/entities/ChatMessage"
+          },
+          "description": "Stores chat messages within each colonia. Includes denormalized 'coloniaId' to avoid authorization `get()` calls.",
+          "params": [
+            {
+              "name": "coloniaId",
+              "description": "The unique identifier of the colonia."
+            },
+            {
+              "name": "chatMessageId",
+              "description": "The unique identifier of the chat message."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/audio/{audioId}",
+        "definition": {
+          "entityName": "Audio",
+          "schema": {
+            "$ref": "#/backend/entities/Audio"
+          },
+          "description": "Stores audio recordings associated with SOS alerts.  This is a top-level collection as its existence is tied to a SOS alert, not a specific user.",
+          "params": [
+            {
+              "name": "audioId",
+              "description": "The unique identifier of the audio recording."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/photos/{photoId}",
+        "definition": {
+          "entityName": "Photo",
+          "schema": {
+            "$ref": "#/backend/entities/Photo"
+          },
+          "description": "Stores photos associated with SOS alerts. This is a top-level collection as its existence is tied to a SOS alert, not a specific user.",
+          "params": [
+            {
+              "name": "photoId",
+              "description": "The unique identifier of the photo."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to support the core features of the Colonia Segura application, focusing on neighborhood communication, emergency alerts, and location sharing. The structure prioritizes authorization independence, clarity, and scalability.  \n\nAuthorization Independence is achieved through denormalization. For example, ChatMessage documents include the `coloniaId`, even though a user also has a `coloniaId`. This avoids needing to `get()` the User document in security rules to determine the user's colonia.  Similarly, the `SosAlert` includes `userId` for direct association.  \n\nQAPs (Rules are not Filters) are supported by structural segregation. User-specific data (like SOS alerts) are stored under the `/users/{userId}` path. This allows listing all alerts for a specific user without needing to filter based on content. The `coloniaId` in `ChatMessage` supports listing messages within a specific colonia.\n\nThe structure uses path-based ownership for user-generated content (SOS alerts) and membership maps are not needed, simplifying access control. Existence-based global roles (e.g., `/roles_admin/{uid}`) are not needed at this time, but can be added later to support administrative functions.\n\nExplicit state modeling is used implicitly by requiring the audio, video, or message. Schema predictability is maintained by avoiding dynamic keys and enforcing consistent naming conventions (e.g., `userId`, `coloniaId`)."
   }
 }
