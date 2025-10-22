@@ -192,7 +192,7 @@ export function AvisoModal({ user }: AvisoModalProps) {
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-headline">
               <Megaphone className="h-6 w-6 text-primary" />

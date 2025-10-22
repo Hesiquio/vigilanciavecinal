@@ -199,7 +199,7 @@ export function SosModal({ user, trigger }: SosModalProps) {
       <DialogTrigger asChild>
         {trigger}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-headline text-destructive">
             <Siren className="h-6 w-6" />
