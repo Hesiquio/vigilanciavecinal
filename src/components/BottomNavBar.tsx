@@ -3,11 +3,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Shield, Users, User, Heart } from "lucide-react";
+import { ShieldAlert, Shield, Users, User, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/", label: "Principal", icon: Home },
+  { href: "/", label: "Alertas", icon: ShieldAlert },
   { href: "/neighborhood", label: "Vecinal", icon: Shield },
   { href: "/groups", label: "Grupos", icon: Users },
   { href: "/family", label: "Familia", icon: Heart },

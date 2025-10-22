@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SosModal } from "./SosModal";
 import { AvisoModal } from "./AvisoModal";
 import { NotificationsDropdown } from "./NotificationsDropdown";
-import { LogOut, User as UserIcon, Home, Shield, Users, Heart, Siren } from "lucide-react";
+import { LogOut, User as UserIcon, ShieldAlert, Shield, Users, Heart, Siren } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,7 +42,7 @@ export interface SosAlert {
 }
 
 const navItems = [
-  { href: "/", label: "Principal", icon: Home },
+  { href: "/", label: "Alertas", icon: ShieldAlert },
   { href: "/neighborhood", label: "Vecinal", icon: Shield },
   { href: "/groups", label: "Grupos", icon: Users },
   { href: "/family", label: "Familia", icon: Heart },
