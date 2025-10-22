@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from "next/link";
@@ -8,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Alertas", icon: ShieldAlert },
-  { href: "/neighborhood", label: "Vecinal", icon: Shield },
+  { href: "/neighborhood", label: "Vecinos", icon: Shield },
   { href: "/groups", label: "Grupos", icon: Users },
   { href: "/family", label: "Familia", icon: Heart },
 ];

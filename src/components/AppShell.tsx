@@ -43,7 +43,7 @@ export interface SosAlert {
 
 const navItems = [
   { href: "/", label: "Alertas", icon: ShieldAlert },
-  { href: "/neighborhood", label: "Vecinal", icon: Shield },
+  { href: "/neighborhood", label: "Vecinos", icon: Shield },
   { href: "/groups", label: "Grupos", icon: Users },
   { href: "/family", label: "Familia", icon: Heart },
 ];

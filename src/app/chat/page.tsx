@@ -57,7 +57,7 @@ export default function ChatSelectionPage() {
                                 <Shield className="h-6 w-6 text-secondary-foreground" />
                             </div>
                             <div>
-                                <p className="text-base font-semibold">Chat Vecinal</p>
+                                <p className="text-base font-semibold">Chat de Vecinos</p>
                                 <p className="text-sm text-muted-foreground">Habla con tu grupo de vigilancia.</p>
                             </div>
                         </div>
