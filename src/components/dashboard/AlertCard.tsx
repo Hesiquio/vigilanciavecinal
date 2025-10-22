@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,7 +12,7 @@ import { cn } from "@/lib/utils";
 import React, { useState } from "react";
 import dynamic from 'next/dynamic';
 import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
-import { collection, addDoc, serverTimestamp, doc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, Timestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { UserProfile } from "@/types";
 
@@ -91,13 +92,17 @@ export function AlertCard({ alert }: AlertCardProps) {
 
     try {
         const avisosCollection = collection(firestore, 'avisos');
+        
+        // Correctly create a Firestore Timestamp from the alert's timestamp
+        const eventTimestamp = new Timestamp(alert.timestamp.seconds, alert.timestamp.nanoseconds);
+
         const newAvisoData = {
             userId: user.uid,
             userName: user.displayName || "Usuario Anónimo",
             userAvatarUrl: user.photoURL || "",
             title,
             description,
-            eventTimestamp: alert.timestamp, 
+            eventTimestamp: eventTimestamp, 
             audience,
             timestamp: serverTimestamp(),
         };

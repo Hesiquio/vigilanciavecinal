@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, ReactElement } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogTrigger
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +28,7 @@ import type { UserProfile, UserGroup } from "@/types";
 
 type SosModalProps = {
     user: User;
+    trigger: ReactElement;
 }
 
 const alertCategories = [
@@ -38,7 +40,7 @@ const alertCategories = [
 
 const BASE_AUDIENCES = ["neighbors", "family"];
 
-export function SosModal({ user }: SosModalProps) {
+export function SosModal({ user, trigger }: SosModalProps) {
   const { firestore } = useFirebase();
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
@@ -190,115 +192,107 @@ export function SosModal({ user }: SosModalProps) {
   };
 
   return (
-    <>
-      <Button
-        onClick={() => setIsOpen(true)}
-        variant="destructive"
-        className="fixed bottom-20 right-4 z-20 h-16 w-16 rounded-full shadow-2xl animate-pulse md:bottom-6 md:right-6"
-        aria-label="Enviar Alerta de Auxilio"
-      >
-        <Siren className="h-8 w-8" />
-      </Button>
-
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-headline text-destructive">
-              <Siren className="h-6 w-6" />
-              Reportar Incidencia
-            </DialogTitle>
-            <DialogDescription>
-              Tu ubicación actual será compartida con los grupos que selecciones. Describe la emergencia para que sea validada.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-             <div className="relative">
-                <ShieldAlert className="absolute top-3 left-3 h-4 w-4 text-primary" />
-                 <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger className="pl-9">
-                        <SelectValue placeholder="Selecciona una categoría..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {alertCategories.map((cat) => (
-                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                 <Label className="text-sm font-medium">Notificar a:</Label>
-                 <Button variant="link" size="sm" className="p-0 h-auto" onClick={handleSelectAll}>Enviar a todos</Button>
-              </div>
-               <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="flex items-center gap-2 rounded-md border p-3">
-                            <Checkbox 
-                                id="audience-neighbors" 
-                                checked={audience.includes('neighbors')} 
-                                onCheckedChange={(checked) => handleAudienceChange(!!checked, 'neighbors')} 
-                            />
-                            <Label htmlFor="audience-neighbors" className="flex items-center gap-2 text-sm font-normal"><ShieldAlert className="h-4 w-4"/> Vecinos</Label>
-                        </div>
-                         <div className="flex items-center gap-2 rounded-md border p-3">
-                            <Checkbox 
-                                id="audience-family" 
-                                checked={audience.includes('family')} 
-                                onCheckedChange={(checked) => handleAudienceChange(!!checked, 'family')} 
-                            />
-                            <Label htmlFor="audience-family" className="flex items-center gap-2 text-sm font-normal"><Heart className="h-4 w-4"/> Familia</Label>
-                        </div>
-                    </div>
-                    {isLoadingGroups && <p className="text-xs text-muted-foreground">Cargando grupos...</p>}
-                    {userGroups && userGroups.map(group => (
-                         <div key={group.id} className="flex items-center gap-2 rounded-md border p-3">
-                            <Checkbox 
-                                id={`audience-${group.id}`}
-                                checked={audience.includes(group.id)} 
-                                onCheckedChange={(checked) => handleAudienceChange(!!checked, group.id)} 
-                            />
-                            <Label htmlFor={`audience-${group.id}`} className="flex items-center gap-2 text-sm font-normal"><Users className="h-4 w-4"/> {group.name}</Label>
-                        </div>
-                    ))}
-               </div>
-            </div>
-            <div className="relative">
-                <MapPin className="absolute top-3 left-3 h-4 w-4 text-primary" />
-                <Input 
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder="Escribe la ubicación..."
-                    className="pl-9"
-                />
-            </div>
-            <div className="relative">
-              <Textarea
-                placeholder="Describe la incidencia (ej. persona sospechosa, vehículo desconocido, etc.)"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="min-h-[100px] pr-10"
-              />
-              <MessageCircle className="absolute top-3 right-3 h-5 w-5 text-muted-foreground" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" className="flex items-center justify-center gap-2" disabled>
-                    <Mic className="h-4 w-4" /> Grabar Audio
-                </Button>
-                <Button variant="outline" className="flex items-center justify-center gap-2" disabled>
-                    <Video className="h-4 w-4" /> Grabar Video
-                </Button>
-            </div>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        {trigger}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-xl font-headline text-destructive">
+            <Siren className="h-6 w-6" />
+            Reportar Incidencia
+          </DialogTitle>
+          <DialogDescription>
+            Tu ubicación actual será compartida con los grupos que selecciones. Describe la emergencia para que sea validada.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+           <div className="relative">
+              <ShieldAlert className="absolute top-3 left-3 h-4 w-4 text-primary" />
+               <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger className="pl-9">
+                      <SelectValue placeholder="Selecciona una categoría..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                      {alertCategories.map((cat) => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleSendSos} className="flex-1" disabled={isSending}>
-              {isSending ? <Loader className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4" />}
-              {isSending ? "Enviando..." : "Enviar Alerta"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+               <Label className="text-sm font-medium">Notificar a:</Label>
+               <Button variant="link" size="sm" className="p-0 h-auto" onClick={handleSelectAll}>Enviar a todos</Button>
+            </div>
+             <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center gap-2 rounded-md border p-3">
+                          <Checkbox 
+                              id="audience-neighbors" 
+                              checked={audience.includes('neighbors')} 
+                              onCheckedChange={(checked) => handleAudienceChange(!!checked, 'neighbors')} 
+                          />
+                          <Label htmlFor="audience-neighbors" className="flex items-center gap-2 text-sm font-normal"><ShieldAlert className="h-4 w-4"/> Vecinos</Label>
+                      </div>
+                       <div className="flex items-center gap-2 rounded-md border p-3">
+                          <Checkbox 
+                              id="audience-family" 
+                              checked={audience.includes('family')} 
+                              onCheckedChange={(checked) => handleAudienceChange(!!checked, 'family')} 
+                          />
+                          <Label htmlFor="audience-family" className="flex items-center gap-2 text-sm font-normal"><Heart className="h-4 w-4"/> Familia</Label>
+                      </div>
+                  </div>
+                  {isLoadingGroups && <p className="text-xs text-muted-foreground">Cargando grupos...</p>}
+                  {userGroups && userGroups.map(group => (
+                       <div key={group.id} className="flex items-center gap-2 rounded-md border p-3">
+                          <Checkbox 
+                              id={`audience-${group.id}`}
+                              checked={audience.includes(group.id)} 
+                              onCheckedChange={(checked) => handleAudienceChange(!!checked, group.id)} 
+                          />
+                          <Label htmlFor={`audience-${group.id}`} className="flex items-center gap-2 text-sm font-normal"><Users className="h-4 w-4"/> {group.name}</Label>
+                      </div>
+                  ))}
+             </div>
+          </div>
+          <div className="relative">
+              <MapPin className="absolute top-3 left-3 h-4 w-4 text-primary" />
+              <Input 
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Escribe la ubicación..."
+                  className="pl-9"
+              />
+          </div>
+          <div className="relative">
+            <Textarea
+              placeholder="Describe la incidencia (ej. persona sospechosa, vehículo desconocido, etc.)"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              className="min-h-[100px] pr-10"
+            />
+            <MessageCircle className="absolute top-3 right-3 h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" className="flex items-center justify-center gap-2" disabled>
+                  <Mic className="h-4 w-4" /> Grabar Audio
+              </Button>
+              <Button variant="outline" className="flex items-center justify-center gap-2" disabled>
+                  <Video className="h-4 w-4" /> Grabar Video
+              </Button>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancelar</Button>
+          <Button variant="destructive" onClick={handleSendSos} className="flex-1" disabled={isSending}>
+            {isSending ? <Loader className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4" />}
+            {isSending ? "Enviando..." : "Enviar Alerta"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

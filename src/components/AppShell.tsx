@@ -8,7 +8,8 @@ import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SosModal } from "./SosModal";
 import { AvisoModal } from "./AvisoModal";
-import { Bell, LogOut, User as UserIcon, Home, MessageSquare, Users, Shield, Heart, Megaphone } from "lucide-react";
+import { NotificationsDropdown } from "./NotificationsDropdown";
+import { LogOut, User as UserIcon, Home, Shield, Users, Heart, Siren } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -95,9 +96,10 @@ export function AppShell({ user, onSignOut, children }: { user: User, onSignOut:
           })}
         </nav>
 
-        <div className="flex items-center gap-4 ml-auto">
+        <div className="flex items-center gap-2 ml-auto">
           {user && <AvisoModal user={user} />}
-          <Bell className="h-6 w-6 text-muted-foreground" />
+          {user && <SosModal user={user} trigger={<Button variant="ghost" size="icon" aria-label="Crear Alerta SOS"><Siren className="h-6 w-6 text-destructive" /></Button>} />}
+          <NotificationsDropdown />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
                <Avatar className="h-8 w-8 cursor-pointer">
@@ -128,7 +130,6 @@ export function AppShell({ user, onSignOut, children }: { user: User, onSignOut:
          {children}
       </main>
 
-      {user && <SosModal user={user} />}
       <BottomNavBar />
     </div>
   );
