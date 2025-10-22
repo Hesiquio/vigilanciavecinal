@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy, updateDoc } from "firebase/firestore";
 import { doc } from "firebase/firestore";
 import type { FamilyMember, UserProfile, ChatMessage } from "@/types";
-import { Loader, UserPlus, Check, Send, AlertCircle, XCircle } from "lucide-react";
+import { Loader, UserPlus, Check, Send, AlertCircle, XCircle, MapPin, MapPinOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import dynamic from 'next/dynamic';
 import {
@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 
 
 const GoogleMapComponent = dynamic(() => import('@/components/dashboard/GoogleMapComponent'), {
@@ -295,7 +296,7 @@ export default function FamilyPage() {
         const theirFamilyMemberRef = doc(firestore, "users", member.userId, "familyMembers", user.uid);
         batch.update(theirFamilyMemberRef, { 
             isSharingLocation: isSharing,
-            location: isSharing ? userProfile.location : '' 
+            location: isSharing && userProfile?.location ? userProfile.location : '' 
         });
     });
 
@@ -322,6 +323,22 @@ export default function FamilyPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
             <FamilyChat user={user} firestore={firestore} />
+             <Card>
+                <CardHeader>
+                    <CardTitle>Añadir Familiar</CardTitle>
+                </CardHeader>
+                <CardContent className="flex gap-2">
+                    <Input 
+                        type="email" 
+                        placeholder="correo@ejemplo.com"
+                        value={searchEmail}
+                        onChange={(e) => setSearchEmail(e.target.value)} 
+                    />
+                    <Button onClick={handleSearchAndAdd} disabled={isSearching}>
+                        {isSearching ? <Loader className="animate-spin" /> : <UserPlus />}
+                    </Button>
+                </CardContent>
+            </Card>
         </div>
 
         <div className="space-y-6">
@@ -346,89 +363,75 @@ export default function FamilyPage() {
                          />
                         <Label htmlFor="location-sharing-family">Compartir mi ubicación con mi familia</Label>
                     </div>
-                </CardContent>
-            </Card>
 
-             <Card>
-                <CardHeader>
-                    <CardTitle>Añadir Familiar</CardTitle>
-                </CardHeader>
-                <CardContent className="flex gap-2">
-                    <Input 
-                        type="email" 
-                        placeholder="correo@ejemplo.com"
-                        value={searchEmail}
-                        onChange={(e) => setSearchEmail(e.target.value)} 
-                    />
-                    <Button onClick={handleSearchAndAdd} disabled={isSearching}>
-                        {isSearching ? <Loader className="animate-spin" /> : <UserPlus />}
-                    </Button>
-                </CardContent>
-            </Card>
-            
-            <Card>
-                <CardHeader>
-                    <CardTitle>Mi Familia</CardTitle>
-                    <CardDescription>Gestiona tus familiares y sus solicitudes.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                {isLoadingFamily ? (
-                    <p>Cargando familiares...</p>
-                ) : (
-                    <ul className="space-y-4">
-                    {familyMembers && familyMembers.length > 0 ? (
-                        familyMembers.map((member) => (
-                        <li key={member.id} className="flex items-center justify-between gap-4 p-2 rounded-lg bg-secondary/50">
-                            <div className="flex items-center gap-3">
-                            <Avatar>
-                                <AvatarImage src={member.avatarUrl} />
-                                <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <p className="font-semibold">{member.name}</p>
-                                <p className="text-xs text-muted-foreground">{member.email}</p>
-                            </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                            {member.status === 'pending' && (
-                                <Button size="sm" onClick={() => handleAcceptRequest(member.id)}>
-                                <Check className="mr-2 h-4 w-4" /> Aceptar
-                                </Button>
-                            )}
-                            {(member.status === 'requested' || member.status === 'accepted') && (
-                                 <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button size="sm" variant="destructive">
-                                            <XCircle className="mr-2 h-4 w-4" /> 
-                                            {member.status === 'requested' ? 'Cancelar' : 'Eliminar'}
+                    <Separator className="my-6" />
+
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-medium text-muted-foreground">Estado de Familiares</h3>
+                        {isLoadingFamily ? (
+                            <p>Cargando familiares...</p>
+                        ) : (
+                            <ul className="space-y-4">
+                            {familyMembers && familyMembers.length > 0 ? (
+                                familyMembers.map((member) => (
+                                <li key={member.id} className="flex items-center justify-between gap-4 p-2 rounded-lg bg-secondary/50">
+                                    <div className="flex items-center gap-3">
+                                    <Avatar>
+                                        <AvatarImage src={member.avatarUrl} />
+                                        <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="font-semibold">{member.name}</p>
+                                        {member.status === 'accepted' ? (
+                                            <div className={cn("flex items-center gap-1 text-xs", member.isSharingLocation ? 'text-green-500' : 'text-muted-foreground')}>
+                                                {member.isSharingLocation ? <MapPin className="h-3 w-3" /> : <MapPinOff className="h-3 w-3" />}
+                                                <span>{member.isSharingLocation ? 'Compartiendo ubicación' : 'Ubicación desactivada'}</span>
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground">{member.email}</p>
+                                        )}
+                                    </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                    {member.status === 'pending' && (
+                                        <Button size="sm" onClick={() => handleAcceptRequest(member.id)}>
+                                        <Check className="mr-2 h-4 w-4" /> Aceptar
                                         </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            {member.status === 'requested'
-                                                ? `Esto cancelará la solicitud de familiar enviada a ${member.name}.`
-                                                : `Esto eliminará a ${member.name} de tu familia. Ambos tendrán que volver a agregarse.`
-                                            }
-                                        </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                        <AlertDialogCancel>Cerrar</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleRemoveOrCancel(member.id, member.name)}>Confirmar</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
+                                    )}
+                                    {(member.status === 'requested' || member.status === 'accepted') && (
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button size="sm" variant="destructive">
+                                                    <XCircle className="mr-2 h-4 w-4" /> 
+                                                    {member.status === 'requested' ? 'Cancelar' : 'Eliminar'}
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    {member.status === 'requested'
+                                                        ? `Esto cancelará la solicitud de familiar enviada a ${member.name}.`
+                                                        : `Esto eliminará a ${member.name} de tu familia. Ambos tendrán que volver a agregarse.`
+                                                    }
+                                                </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                <AlertDialogCancel>Cerrar</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleRemoveOrCancel(member.id, member.name)}>Confirmar</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    )}
+                                    </div>
+                                </li>
+                                ))
+                            ) : (
+                                <p className="text-center text-sm text-muted-foreground">Aún no has añadido a ningún familiar.</p>
                             )}
-                            {member.status === 'accepted' && member.id !== user.uid && <p className="text-xs text-green-500 pr-2">Aceptado</p>}
-                            </div>
-                        </li>
-                        ))
-                    ) : (
-                        <p className="text-center text-sm text-muted-foreground">Aún no has añadido a ningún familiar.</p>
-                    )}
-                    </ul>
-                )}
+                            </ul>
+                        )}
+                    </div>
                 </CardContent>
             </Card>
         </div>
@@ -436,3 +439,5 @@ export default function FamilyPage() {
     </AppShell>
   );
 }
+
+    
