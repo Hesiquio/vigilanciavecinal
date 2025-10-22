@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { collection, query, where, getDocs, writeBatch, addDoc, serverTimestamp, orderBy, updateDoc, setDoc } from "firebase/firestore";
 import { doc } from "firebase/firestore";
 import type { FamilyMember, UserProfile, ChatMessage } from "@/types";
-import { Loader, UserPlus, Check, Send, AlertCircle, XCircle, MapPin, MapPinOff, Edit } from "lucide-react";
+import { Loader, UserPlus, Check, Send, AlertCircle, XCircle, MapPin, MapPinOff, Edit, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import dynamic from 'next/dynamic';
 import {
@@ -31,6 +31,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 
 const GoogleMapComponent = dynamic(() => import('@/components/dashboard/GoogleMapComponent'), {
@@ -119,6 +120,7 @@ const FamilyChat = ({ user, firestore, userProfile, onUpdateName }: { user: any,
     const [isNameDialogOpen, setIsNameDialogOpen] = useState(false);
     const [newFamilyName, setNewFamilyName] = useState("");
     const [isSavingName, setIsSavingName] = useState(false);
+    const [isOpen, setIsOpen] = useState(true);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -160,48 +162,61 @@ const FamilyChat = ({ user, firestore, userProfile, onUpdateName }: { user: any,
     
     return (
         <>
-            <Card className="flex flex-col h-[400px]">
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                        {getFamilyName()}
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsNameDialogOpen(true)}>
-                            <Edit className="h-4 w-4" />
-                        </Button>
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="flex-1 p-0">
-                    <div className="flex h-full flex-col">
-                        <div className="flex-1 space-y-4 p-4 overflow-y-auto">
-                            {isLoading && <p className="text-center">Cargando mensajes...</p>}
-                            {!isLoading && messages && messages.map((msg) => (
-                                <div key={msg.id} className={cn("flex items-start gap-2", msg.userId === user.uid ? "justify-end" : "justify-start")}>
-                                    {msg.userId !== 'system' && msg.userId !== user.uid && <Avatar className="h-8 w-8"><AvatarImage src={msg.userAvatarUrl} /><AvatarFallback>{msg.userName?.charAt(0)}</AvatarFallback></Avatar>}
-                                    <div className={cn("flex flex-col gap-1", msg.userId === user.uid ? "items-end" : "items-start")}>
-                                    {msg.userId === 'system' ? (
-                                        <div className="w-full text-center text-xs text-muted-foreground italic my-2">
-                                            <p>{msg.text.split('\n').map((line, i) => <span key={i}>{line}<br/></span>)}</p>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            {msg.userId !== user.uid && <p className="text-xs text-muted-foreground px-2">{msg.userName}</p>}
-                                            <div className={cn("max-w-xs rounded-lg p-3", msg.userId === user.uid ? "bg-primary text-primary-foreground" : "bg-secondary")}>
-                                                <p className="text-sm">{msg.text}</p>
-                                            </div>
-                                        </>
-                                    )}
-                                    </div>
-                                    {msg.userId !== 'system' && msg.userId === user.uid && <Avatar className="h-8 w-8"><AvatarImage src={user.photoURL || undefined} /><AvatarFallback>TÚ</AvatarFallback></Avatar>}
-                                </div>
-                            ))}
-                            <div ref={messagesEndRef} />
+            <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+                <Card>
+                    <CollapsibleTrigger asChild>
+                        <div className="flex items-center justify-between p-4 cursor-pointer">
+                            <CardTitle className="flex items-center gap-2">
+                                {getFamilyName()}
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setIsNameDialogOpen(true);}}>
+                                    <Edit className="h-4 w-4" />
+                                </Button>
+                            </CardTitle>
+                            <Button variant="ghost" size="sm" className="w-9 p-0">
+                                <ChevronsUpDown className="h-4 w-4" />
+                                <span className="sr-only">Toggle</span>
+                            </Button>
                         </div>
-                        <form onSubmit={handleSendMessage} className="flex items-center gap-2 border-t p-4">
-                            <Input placeholder="Escribe un mensaje..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} />
-                            <Button type="submit"><Send /></Button>
-                        </form>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                        <div className="flex flex-col h-[400px]">
+                             <CardContent className="flex-1 p-0">
+                                <div className="flex h-full flex-col">
+                                    <div className="flex-1 space-y-4 p-4 overflow-y-auto">
+                                        {isLoading && <p className="text-center">Cargando mensajes...</p>}
+                                        {!isLoading && messages && messages.map((msg) => (
+                                            <div key={msg.id} className={cn("flex items-start gap-2", msg.userId === user.uid ? "justify-end" : "justify-start")}>
+                                                {msg.userId !== 'system' && msg.userId !== user.uid && <Avatar className="h-8 w-8"><AvatarImage src={msg.userAvatarUrl} /><AvatarFallback>{msg.userName?.charAt(0)}</AvatarFallback></Avatar>}
+                                                <div className={cn("flex flex-col gap-1", msg.userId === user.uid ? "items-end" : "items-start")}>
+                                                {msg.userId === 'system' ? (
+                                                    <div className="w-full text-center text-xs text-muted-foreground italic my-2">
+                                                        <p>{msg.text.split('\n').map((line, i) => <span key={i}>{line}<br/></span>)}</p>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        {msg.userId !== user.uid && <p className="text-xs text-muted-foreground px-2">{msg.userName}</p>}
+                                                        <div className={cn("max-w-xs rounded-lg p-3", msg.userId === user.uid ? "bg-primary text-primary-foreground" : "bg-secondary")}>
+                                                            <p className="text-sm">{msg.text}</p>
+                                                        </div>
+                                                    </>
+                                                )}
+                                                </div>
+                                                {msg.userId !== 'system' && msg.userId === user.uid && <Avatar className="h-8 w-8"><AvatarImage src={user.photoURL || undefined} /><AvatarFallback>TÚ</AvatarFallback></Avatar>}
+                                            </div>
+                                        ))}
+                                        <div ref={messagesEndRef} />
+                                    </div>
+                                    <form onSubmit={handleSendMessage} className="flex items-center gap-2 border-t p-4">
+                                        <Input placeholder="Escribe un mensaje..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} />
+                                        <Button type="submit"><Send /></Button>
+                                    </form>
+                                </div>
+                            </CardContent>
+                        </div>
+                    </CollapsibleContent>
+                </Card>
+            </Collapsible>
+
             <Dialog open={isNameDialogOpen} onOpenChange={setIsNameDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -502,3 +517,5 @@ const handleUpdateFamilyName = async (name: string) => {
     </AppShell>
   );
 }
+
+    
