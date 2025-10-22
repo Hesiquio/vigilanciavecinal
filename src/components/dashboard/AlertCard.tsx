@@ -3,13 +3,17 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { MapPin, Phone, MessageCircle, ShieldAlert, Siren, CloudSunRain, UserX } from "lucide-react";
+import { MapPin, Phone, MessageCircle, ShieldAlert, Siren, CloudSunRain, UserX, Megaphone } from "lucide-react";
 import type { SosAlert, AlertCategory } from "../AppShell";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
-import React from "react";
+import React, { useState } from "react";
 import dynamic from 'next/dynamic';
+import { useFirebase, useDoc, useMemoFirebase } from "@/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+import type { UserProfile } from "@/types";
 
 const GoogleMapComponent = dynamic(() => import('@/components/dashboard/GoogleMapComponent'), {
     ssr: false,
@@ -57,11 +61,71 @@ const categoryColors: Record<AlertCategory, string> = {
 
 
 export function AlertCard({ alert }: AlertCardProps) {
+  const { firestore, user } = useFirebase();
+  const { toast } = useToast();
+  const [isNotifying, setIsNotifying] = useState(false);
+
+  const userDocRef = useMemoFirebase(
+    () => (user && firestore ? React.doc(firestore, "users", user.uid) : null),
+    [user, firestore]
+  );
+  const { data: userProfile } = useDoc<UserProfile>(userDocRef);
+
+
   const markerPosition = parseLocation(alert.location);
   const markers = markerPosition ? [markerPosition] : [];
 
   const Icon = categoryIcons[alert.category] || ShieldAlert;
   const colorClass = categoryColors[alert.category] || "border-destructive/50 text-destructive";
+
+  const handleNotifyNeighbors = async () => {
+    if (!firestore || !user || !userProfile || !userProfile.postalCode) {
+        toast({ title: "Error", description: "No se puede notificar: perfil de usuario incompleto.", variant: "destructive" });
+        return;
+    }
+    setIsNotifying(true);
+
+    const title = `Atención a la alerta de ${alert.category}`;
+    const description = `Se ha reportado una alerta de '${alert.category}' en la zona. Mensaje original: "${alert.message}". Por favor, manténgase alerta.`;
+    const audience = ['neighbors']; // Only notify user's own neighbors
+
+    try {
+        const avisosCollection = collection(firestore, 'avisos');
+        const newAvisoData = {
+            userId: user.uid,
+            userName: user.displayName || "Usuario Anónimo",
+            userAvatarUrl: user.photoURL || "",
+            title,
+            description,
+            eventTimestamp: alert.timestamp, 
+            audience,
+            timestamp: serverTimestamp(),
+        };
+
+        await addDoc(avisosCollection, newAvisoData);
+        
+        // Post system message to the neighborhood chat
+        const neighborhoodChatRef = collection(firestore, `neighborhood-chats/${userProfile.postalCode}/messages`);
+        await addDoc(neighborhoodChatRef, {
+            text: `**AVISO (desde alerta): ${title}**\n${description}`,
+            userId: 'system',
+            userName: 'Sistema de Avisos',
+            userAvatarUrl: '',
+            timestamp: serverTimestamp(),
+        });
+
+        toast({
+            title: "Vecinos Notificados",
+            description: "Se ha enviado un aviso a tu chat vecinal.",
+        });
+
+    } catch (error) {
+        console.error("Error notifying neighbors:", error);
+        toast({ title: "Error", description: "No se pudo enviar la notificación a los vecinos.", variant: "destructive" });
+    } finally {
+        setIsNotifying(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -90,11 +154,12 @@ export function AlertCard({ alert }: AlertCardProps) {
         <GoogleMapComponent markers={markers} center={markerPosition || undefined} />
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <Button variant="outline">
+        <Button variant="outline" disabled>
           <MessageCircle className="mr-2 h-4 w-4" /> Responder
         </Button>
-        <Button disabled>
-            <Phone className="mr-2 h-4 w-4" /> Llamar al Grupo
+        <Button onClick={handleNotifyNeighbors} disabled={isNotifying}>
+            <Megaphone className="mr-2 h-4 w-4" />
+            {isNotifying ? 'Notificando...' : 'Notificar a Vecinos'}
         </Button>
       </div>
     </div>
