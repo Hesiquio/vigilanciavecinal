@@ -89,7 +89,7 @@ export default function GroupsPage() {
             userId: user.uid,
             name: user.displayName || user.email,
             email: user.email,
-            avatarUrl: user.photoURL,
+            avatarUrl: user.photoURL || '',
             status: 'accepted',
             isSharingLocation: false, 
             location: '', 
