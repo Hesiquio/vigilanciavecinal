@@ -134,7 +134,7 @@ const GroupChat = ({ user, firestore, groupId, groupName, isOwner, onEdit, onDel
     };
 
     return (
-        <Card className="flex flex-col h-[400px]">
+        <Card className="flex flex-col h-full">
             <CardHeader className="flex-row items-center justify-between">
                 <CardTitle>{groupName || "Chat de Grupo"}</CardTitle>
                  {isOwner && (
