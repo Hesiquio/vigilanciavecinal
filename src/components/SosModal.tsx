@@ -228,43 +228,37 @@ export function SosModal({ user, trigger }: SosModalProps) {
                <Label className="text-sm font-medium">Notificar a:</Label>
                <Button variant="link" size="sm" className="p-0 h-auto" onClick={handleSelectAll}>Enviar a todos</Button>
             </div>
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="flex items-center gap-2 rounded-md border p-3">
-                  <Checkbox
-                    id="audience-neighbors"
-                    checked={audience.includes('neighbors')}
-                    onCheckedChange={(checked) => handleAudienceChange(!!checked, 'neighbors')}
-                  />
-                  <Label htmlFor="audience-neighbors" className="flex items-center gap-2 text-sm font-normal">
-                    <Users className="h-4 w-4" /> Vecinos
-                  </Label>
+             <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2 rounded-md border p-3">
+                        <Checkbox 
+                            id="audience-neighbors" 
+                            checked={audience.includes('neighbors')} 
+                            onCheckedChange={(checked) => handleAudienceChange(!!checked, 'neighbors')} 
+                        />
+                        <Label htmlFor="audience-neighbors" className="flex items-center gap-2 text-sm font-normal"><Users className="h-4 w-4"/> Vecinos</Label>
+                    </div>
+                     <div className="flex items-center gap-2 rounded-md border p-3">
+                        <Checkbox 
+                            id="audience-family" 
+                            checked={audience.includes('family')} 
+                            onCheckedChange={(checked) => handleAudienceChange(!!checked, 'family')} 
+                        />
+                        <Label htmlFor="audience-family" className="flex items-center gap-2 text-sm font-normal"><Heart className="h-4 w-4"/> Familia</Label>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2 rounded-md border p-3">
-                  <Checkbox
-                    id="audience-family"
-                    checked={audience.includes('family')}
-                    onCheckedChange={(checked) => handleAudienceChange(!!checked, 'family')}
-                  />
-                  <Label htmlFor="audience-family" className="flex items-center gap-2 text-sm font-normal">
-                    <Heart className="h-4 w-4" /> Familia
-                  </Label>
-                </div>
-              </div>
-              {isLoadingGroups && <p className="text-xs text-muted-foreground">Cargando grupos...</p>}
-              {userGroups && userGroups.filter(g => g.status === 'accepted').map(group => (
-                <div key={group.id} className="flex items-center gap-2 rounded-md border p-3">
-                  <Checkbox
-                    id={`audience-${group.id}`}
-                    checked={audience.includes(group.id)}
-                    onCheckedChange={(checked) => handleAudienceChange(!!checked, group.id)}
-                  />
-                  <Label htmlFor={`audience-${group.id}`} className="flex items-center gap-2 text-sm font-normal">
-                    <Users className="h-4 w-4" /> {group.name}
-                  </Label>
-                </div>
-              ))}
-            </div>
+                {isLoadingGroups && <p className="text-xs text-muted-foreground">Cargando grupos...</p>}
+                {userGroups && userGroups.filter(g => g.status === 'accepted').map(group => (
+                     <div key={group.id} className="flex items-center gap-2 rounded-md border p-3">
+                        <Checkbox 
+                            id={`audience-${group.id}`}
+                            checked={audience.includes(group.id)} 
+                            onCheckedChange={(checked) => handleAudienceChange(!!checked, group.id)} 
+                        />
+                        <Label htmlFor={`audience-${group.id}`} className="flex items-center gap-2 text-sm font-normal"><Users className="h-4 w-4"/> {group.name}</Label>
+                    </div>
+                ))}
+           </div>
           </div>
           <div className="relative">
               <MapPin className="absolute top-3 left-3 h-4 w-4 text-primary" />
