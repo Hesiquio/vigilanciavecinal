@@ -134,7 +134,7 @@ const GroupChat = ({ user, firestore, groupId, groupName, isOwner, onEdit, onDel
     };
 
     return (
-        <Card className="flex flex-col h-full">
+        <Card className="flex flex-col">
             <CardHeader className="flex-row items-center justify-between">
                 <CardTitle>{groupName || "Chat de Grupo"}</CardTitle>
                  {isOwner && (
@@ -167,8 +167,8 @@ const GroupChat = ({ user, firestore, groupId, groupName, isOwner, onEdit, onDel
                 )}
             </CardHeader>
             <CardContent className="p-0 flex-1">
-                <div className="flex h-full flex-col">
-                    <div className="flex-1 space-y-4 p-4 overflow-y-auto">
+                <div className="flex flex-col">
+                    <div className="flex-1 space-y-4 p-4 overflow-y-auto max-h-[500px]">
                         {isLoading && <p className="text-center">Cargando mensajes...</p>}
                         {!isLoading && messages && messages.map((msg) => (
                             <div key={msg.id} className={cn("flex items-start gap-2", msg.userId === user.uid ? "justify-end" : "justify-start")}>
@@ -563,3 +563,5 @@ export default function GroupDetailPage() {
     </AppShell>
   );
 }
+
+    
