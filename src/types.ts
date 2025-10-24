@@ -84,3 +84,7 @@ export interface SosAlert {
   audioUrl?: string; // Optional URL for a recorded audio clip
 }
 
+export type UserNotification = {
+    id: string;
+    isRead: boolean;
+}

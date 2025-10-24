@@ -2,7 +2,7 @@
 "use client";
 
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy, limit } from "firebase/firestore";
+import { collection, query, orderBy, limit, doc, setDoc } from "firebase/firestore";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,12 +12,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "./ui/button";
-import { Bell, Loader, ShieldAlert, Megaphone } from "lucide-react";
+import { Bell, Loader, ShieldAlert, Megaphone, Check } from "lucide-react";
 import type { SosAlert } from "./AppShell";
-import type { Aviso } from "@/types";
+import type { Aviso, UserNotification } from "@/types";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useMemo } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 type ActivityItem = (SosAlert & { type: 'alert' }) | (Aviso & { type: 'aviso' });
 
@@ -29,7 +30,8 @@ const formatTimestamp = (timestamp: { seconds: number, nanoseconds: number }): s
 
 
 export function NotificationsDropdown() {
-  const { firestore } = useFirebase();
+  const { firestore, user } = useFirebase();
+  const { toast } = useToast();
 
   const alertsQuery = useMemoFirebase(() => {
       if (!firestore) return null;
@@ -51,18 +53,43 @@ export function NotificationsDropdown() {
   },[firestore]);
   const { data: avisos, isLoading: isLoadingAvisos } = useCollection<Aviso>(avisosQuery);
 
+  const readNotificationsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return collection(firestore, `users/${user.uid}/readNotifications`);
+  }, [firestore, user]);
+  const { data: readNotifications } = useCollection<UserNotification>(readNotificationsQuery);
+
+  const readNotificationIds = useMemo(() => new Set(readNotifications?.map(n => n.id)), [readNotifications]);
+
 
   const combinedActivity: ActivityItem[] = useMemo(() => {
     const typedAlerts: ActivityItem[] = alerts ? alerts.map(a => ({ ...a, type: 'alert' as const })) : [];
     const typedAvisos: ActivityItem[] = avisos ? avisos.map(a => ({ ...a, type: 'aviso' as const })) : [];
 
-    return [...typedAlerts, ...typedAvisos]
+    const allActivity = [...typedAlerts, ...typedAvisos]
       .filter(item => item.timestamp)
-      .sort((a, b) => b.timestamp.seconds - a.timestamp.seconds)
-      .slice(0, 5);
-  }, [alerts, avisos]);
+      .sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
+      
+    // Filter out read notifications
+    return allActivity.filter(item => !readNotificationIds.has(item.id)).slice(0, 5);
+  }, [alerts, avisos, readNotificationIds]);
 
   const isLoading = isLoadingAlerts || isLoadingAvisos;
+
+  const handleMarkAsRead = async (e: React.MouseEvent, itemId: string) => {
+    e.stopPropagation(); // Prevent the dropdown from closing
+    if (!firestore || !user) {
+        toast({ title: "Error", description: "Debes iniciar sesión para hacer esto.", variant: "destructive" });
+        return;
+    }
+    const notifRef = doc(firestore, `users/${user.uid}/readNotifications`, itemId);
+    try {
+        await setDoc(notifRef, { isRead: true });
+    } catch (error) {
+        console.error("Error marking notification as read:", error);
+        toast({ title: "Error", description: "No se pudo marcar la notificación como leída.", variant: "destructive" });
+    }
+  }
 
   const renderContent = () => {
     if (isLoading) {
@@ -81,7 +108,7 @@ export function NotificationsDropdown() {
     }
 
     return combinedActivity.map((item) => (
-      <DropdownMenuItem key={item.id} className="flex items-start gap-3">
+      <DropdownMenuItem key={item.id} className="flex items-start gap-3" onSelect={(e) => e.preventDefault()}>
         <div className={`mt-1 rounded-full p-1.5 ${item.type === 'alert' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
           {item.type === 'alert' ? <ShieldAlert className="h-4 w-4" /> : <Megaphone className="h-4 w-4" />}
         </div>
@@ -90,6 +117,15 @@ export function NotificationsDropdown() {
           <p className="text-xs text-muted-foreground line-clamp-2">{item.type === 'alert' ? item.message : item.description}</p>
            <p className="text-xs text-muted-foreground mt-1">{formatTimestamp(item.timestamp)}</p>
         </div>
+        <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-7 w-7"
+            onClick={(e) => handleMarkAsRead(e, item.id)}
+            title="Marcar como leído"
+        >
+            <Check className="h-4 w-4" />
+        </Button>
       </DropdownMenuItem>
     ));
   }
@@ -102,10 +138,10 @@ export function NotificationsDropdown() {
                 {combinedActivity.length > 0 && <span className="absolute top-1 right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span></span>}
             </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuContent align="end" className="w-80 md:w-96">
             <DropdownMenuLabel>Notificaciones Recientes</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <div className="space-y-1">
+            <div className="space-y-1 max-h-96 overflow-y-auto">
               {renderContent()}
             </div>
         </DropdownMenuContent>

@@ -215,6 +215,15 @@
             "alertId": { "type": "string", "description": "Optional ID of the SOS alert related to this message." }
         },
         "required": ["text", "userId", "userName", "timestamp"]
+    },
+     "UserNotification": {
+        "title": "User Notification",
+        "description": "Represents the state of a notification for a user (e.g., read or unread). The document ID is the ID of the source alert or aviso.",
+        "type": "object",
+        "properties": {
+            "isRead": { "type": "boolean", "description": "Whether the user has marked the notification as read." }
+        },
+        "required": ["isRead"]
     }
   },
   "auth": {
@@ -236,6 +245,10 @@
      "/users/{userId}/groups/{groupId}": {
       "schema": { "$ref": "#/backend/entities/UserGroup" },
       "description": "Subcollection storing references to groups a user is a member of."
+    },
+    "/users/{userId}/readNotifications/{notificationId}": {
+        "schema": { "$ref": "#/backend/entities/UserNotification" },
+        "description": "Stores which notifications a user has marked as read. Writable by the user."
     },
     "/sos-alerts/{alertId}": {
       "schema": { "$ref": "#/backend/entities/SosAlert" },
