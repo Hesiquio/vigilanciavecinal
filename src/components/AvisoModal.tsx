@@ -57,6 +57,18 @@ export function AvisoModal({ user }: AvisoModalProps) {
   );
   const { data: userGroups, isLoading: isLoadingGroups } = useCollection<UserGroup>(userGroupsQuery);
 
+  useEffect(() => {
+    if (isOpen) {
+      // Reset form state when modal opens
+      setTitle("");
+      setDescription("");
+      setEventDate(undefined);
+      setEventTime("");
+      setAudience([]);
+      setIsSending(false);
+    }
+  }, [isOpen]);
+
   const handleAudienceChange = (checked: boolean, value: string) => {
     setAudience(prev => 
         checked ? [...prev, value] : prev.filter(item => item !== value)
@@ -164,13 +176,7 @@ export function AvisoModal({ user }: AvisoModalProps) {
             description: "Los grupos seleccionados han sido notificados en sus respectivos chats.",
         });
         
-        // Reset form
         setIsOpen(false);
-        setTitle("");
-        setDescription("");
-        setEventDate(undefined);
-        setEventTime("");
-        setAudience([]);
 
     } catch (error) {
         console.error("Error sending aviso:", error);
@@ -312,3 +318,5 @@ export function AvisoModal({ user }: AvisoModalProps) {
     </>
   );
 }
+
+    

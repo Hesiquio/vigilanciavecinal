@@ -62,11 +62,15 @@ export function SosModal({ user, trigger }: SosModalProps) {
   );
   const { data: userGroups, isLoading: isLoadingGroups } = useCollection<UserGroup>(userGroupsQuery);
 
-
-  // Get location when modal opens
   useEffect(() => {
     if (isOpen) {
+      // Reset form state and get location when modal opens
+      setMessage("");
+      setCategory("");
+      setAudience([]);
+      setIsSending(false);
       setLocation("Obteniendo ubicación...");
+
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
@@ -86,8 +90,7 @@ export function SosModal({ user, trigger }: SosModalProps) {
         setLocation("Geolocalización no soportada.");
       }
     }
-     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, toast]);
   
   const handleAudienceChange = (checked: boolean, value: string) => {
     setAudience(prev => 
@@ -180,11 +183,7 @@ export function SosModal({ user, trigger }: SosModalProps) {
             description: "Los grupos seleccionados han sido notificados en sus respectivos chats.",
         });
         
-        // Reset form
         setIsOpen(false);
-        setMessage("");
-        setCategory("");
-        setAudience([]);
 
     } catch (error) {
         console.error("Error sending SOS:", error);
