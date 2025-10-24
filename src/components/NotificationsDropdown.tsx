@@ -2,7 +2,7 @@
 "use client";
 
 import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy, limit, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, orderBy, limit } from "firebase/firestore";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,13 +12,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "./ui/button";
-import { Bell, Loader, ShieldAlert, Megaphone, X } from "lucide-react";
+import { Bell, Loader, ShieldAlert, Megaphone } from "lucide-react";
 import type { SosAlert } from "./AppShell";
 import type { Aviso } from "@/types";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useState, useMemo } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { useMemo } from "react";
 
 type ActivityItem = (SosAlert & { type: 'alert' }) | (Aviso & { type: 'aviso' });
 
@@ -31,8 +30,6 @@ const formatTimestamp = (timestamp: { seconds: number, nanoseconds: number }): s
 
 export function NotificationsDropdown() {
   const { firestore } = useFirebase();
-  const { toast } = useToast();
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const alertsQuery = useMemoFirebase(() => {
       if (!firestore) return null;
@@ -67,24 +64,6 @@ export function NotificationsDropdown() {
 
   const isLoading = isLoadingAlerts || isLoadingAvisos;
 
-  const handleDeleteNotification = async (item: ActivityItem, event: React.MouseEvent) => {
-    event.stopPropagation();
-    if (!firestore || isDeleting) return;
-    setIsDeleting(item.id);
-
-    const collectionName = item.type === 'alert' ? 'sos-alerts' : 'avisos';
-    try {
-        const docRef = doc(firestore, collectionName, item.id);
-        await deleteDoc(docRef);
-        toast({ title: "Notificación eliminada" });
-    } catch (error) {
-        console.error("Error deleting notification:", error);
-        toast({ title: "Error", description: "No se pudo eliminar la notificación.", variant: "destructive" });
-    } finally {
-        setIsDeleting(null);
-    }
-  }
-
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -102,7 +81,7 @@ export function NotificationsDropdown() {
     }
 
     return combinedActivity.map((item) => (
-      <DropdownMenuItem key={item.id} className="flex items-start gap-3 relative pr-8">
+      <DropdownMenuItem key={item.id} className="flex items-start gap-3">
         <div className={`mt-1 rounded-full p-1.5 ${item.type === 'alert' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
           {item.type === 'alert' ? <ShieldAlert className="h-4 w-4" /> : <Megaphone className="h-4 w-4" />}
         </div>
@@ -111,15 +90,6 @@ export function NotificationsDropdown() {
           <p className="text-xs text-muted-foreground line-clamp-2">{item.type === 'alert' ? item.message : item.description}</p>
            <p className="text-xs text-muted-foreground mt-1">{formatTimestamp(item.timestamp)}</p>
         </div>
-        <Button 
-            variant="ghost" 
-            size="icon" 
-            className="absolute top-1 right-1 h-6 w-6"
-            onClick={(e) => handleDeleteNotification(item, e)}
-            disabled={isDeleting === item.id}
-        >
-            {isDeleting === item.id ? <Loader className="h-3 w-3 animate-spin"/> : <X className="h-3 w-3" />}
-        </Button>
       </DropdownMenuItem>
     ));
   }
