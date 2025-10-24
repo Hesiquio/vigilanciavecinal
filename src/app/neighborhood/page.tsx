@@ -47,12 +47,12 @@ const NeighborhoodChat = ({ user, userProfile, firestore }: { user: any, userPro
     const chatTitle = `Chat Vecinal: ${postalCode || '...'}`;
 
     return (
-        <Card className="flex flex-col">
+        <Card>
             <CardHeader>
                 <CardTitle>{chatTitle}</CardTitle>
             </CardHeader>
-            <CardContent className="p-0 flex-1 flex flex-col">
-                <div className="flex-1 space-y-4 p-4 overflow-y-auto">
+            <CardContent className="p-0">
+                <div className="space-y-4 p-4 overflow-y-auto max-h-[400px]">
                     {isLoading && <p className="text-center">Cargando mensajes...</p>}
                     {!isLoading && messages?.map((msg) => (
                        <div key={msg.id} className={cn("flex items-start gap-2", msg.userId === user.uid ? "justify-end" : "justify-start")}>
@@ -76,11 +76,11 @@ const NeighborhoodChat = ({ user, userProfile, firestore }: { user: any, userPro
                     ))}
                      <div ref={messagesEndRef} />
                 </div>
-                <form onSubmit={handleSendMessage} className="flex items-center gap-2 border-t p-4">
-                    <Input placeholder="Escribe un mensaje..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} />
-                    <Button type="submit"><Send /></Button>
-                </form>
             </CardContent>
+            <form onSubmit={handleSendMessage} className="flex items-center gap-2 border-t p-4">
+                <Input placeholder="Escribe un mensaje..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} />
+                <Button type="submit"><Send /></Button>
+            </form>
         </Card>
     );
 };
