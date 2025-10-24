@@ -47,13 +47,13 @@ const NeighborhoodChat = ({ user, userProfile, firestore }: { user: any, userPro
     const chatTitle = `Chat Vecinal: ${postalCode || '...'}`;
 
     return (
-        <Card className="flex flex-col h-full">
+        <Card className="flex flex-col">
             <CardHeader>
                 <CardTitle>{chatTitle}</CardTitle>
             </CardHeader>
             <CardContent className="p-0 flex-1">
                 <div className="flex h-full flex-col">
-                    <div className="flex-1 space-y-4 p-4 overflow-y-auto">
+                    <div className="flex-1 space-y-4 p-4 overflow-y-auto max-h-[500px]">
                         {isLoading && <p className="text-center">Cargando mensajes...</p>}
                         {!isLoading && messages?.map((msg) => (
                            <div key={msg.id} className={cn("flex items-start gap-2", msg.userId === user.uid ? "justify-end" : "justify-start")}>
@@ -122,7 +122,7 @@ export default function NeighborhoodPage() {
 
   return (
     <AppShell user={user} onSignOut={handleSignOut}>
-       <div className="grid gap-6 lg:grid-cols-2 h-full">
+       <div className="grid gap-6 lg:grid-cols-2">
             <NeighborhoodChat user={user} userProfile={userProfile} firestore={firestore} />
             <div className="space-y-6">
                 <RecentActivity />
@@ -131,5 +131,7 @@ export default function NeighborhoodPage() {
     </AppShell>
   );
 }
+
+    
 
     
