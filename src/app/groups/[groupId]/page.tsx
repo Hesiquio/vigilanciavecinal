@@ -106,7 +106,7 @@ async function removeOrCancelGroupMember(db: any, memberId: string, groupId: str
 }
 
 
-const GroupChat = ({ user, firestore, groupId, groupName }: { user: any, firestore: any, groupId: string, groupName: string }) => {
+const GroupChat = ({ user, firestore, groupId, groupName, isOwner, onEdit, onDelete }: { user: any, firestore: any, groupId: string, groupName: string, isOwner: boolean, onEdit: () => void, onDelete: () => void }) => {
     const messagesRef = useMemoFirebase(
         () => firestore && groupId ? query(collection(firestore, `group-chats/${groupId}/messages`), orderBy("timestamp", "asc")) : null,
         [firestore, groupId]
@@ -135,8 +135,36 @@ const GroupChat = ({ user, firestore, groupId, groupName }: { user: any, firesto
 
     return (
         <Card className="flex flex-col h-[400px]">
-            <CardHeader>
+            <CardHeader className="flex-row items-center justify-between">
                 <CardTitle>{groupName || "Chat de Grupo"}</CardTitle>
+                 {isOwner && (
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="icon" onClick={onEdit}>
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Editar Nombre</span>
+                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="icon">
+                                    <Trash2 className="h-4 w-4" />
+                                    <span className="sr-only">Eliminar Grupo</span>
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar este grupo?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Esta acción es permanente y eliminará el grupo, todos sus miembros y el historial de chat. No se puede deshacer.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={onDelete}>Sí, eliminar grupo</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
+                )}
             </CardHeader>
             <CardContent className="p-0 flex-1">
                 <div className="flex h-full flex-col">
@@ -380,7 +408,15 @@ export default function GroupDetailPage() {
       </Link>
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
-            <GroupChat user={user} firestore={firestore} groupId={groupId} groupName={groupData?.name || ''} />
+            <GroupChat 
+                user={user} 
+                firestore={firestore} 
+                groupId={groupId} 
+                groupName={groupData?.name || ''} 
+                isOwner={isOwner}
+                onEdit={() => setIsEditDialogOpen(true)}
+                onDelete={handleDeleteGroup}
+            />
             <Card>
                 <CardHeader>
                     <CardTitle>Alertas del Grupo</CardTitle>
@@ -395,39 +431,11 @@ export default function GroupDetailPage() {
 
         <div className="space-y-6">
              <Card>
-                <CardHeader className="pb-4 flex-row items-center justify-between">
+                <CardHeader className="pb-4">
                     <div>
                         <CardTitle>Mapa del Grupo</CardTitle>
                         <CardDescription>Ubicación de miembros que comparten su posición.</CardDescription>
                     </div>
-                     {isOwner && (
-                        <div className="flex gap-2">
-                           <Button variant="outline" size="icon" onClick={() => setIsEditDialogOpen(true)}>
-                                <Edit className="h-4 w-4" />
-                                <span className="sr-only">Editar Nombre</span>
-                            </Button>
-                             <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" size="icon">
-                                        <Trash2 className="h-4 w-4" />
-                                        <span className="sr-only">Eliminar Grupo</span>
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Eliminar este grupo?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Esta acción es permanente y eliminará el grupo, todos sus miembros y el historial de chat. No se puede deshacer.
-                                    </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDeleteGroup}>Sí, eliminar grupo</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
-                    )}
                 </CardHeader>
                 <CardContent>
                     <div className="relative h-64 w-full rounded-lg overflow-hidden mb-4">
@@ -555,5 +563,3 @@ export default function GroupDetailPage() {
     </AppShell>
   );
 }
-
-    
