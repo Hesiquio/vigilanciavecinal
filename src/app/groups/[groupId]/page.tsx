@@ -200,7 +200,10 @@ export default function GroupDetailPage() {
   );
   const { data: members, isLoading: isLoadingMembers } = useCollection<GroupMember>(membersQuery);
   
-  const currentUserMemberInfo = members?.find(m => m.userId === user?.uid);
+  const currentUserMemberInfo = useMemo(() => members?.find(m => m.userId === user?.uid), [members, user]);
+
+  const userProfileRef = useMemoFirebase(() => (firestore && user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
     if (groupData) {
@@ -209,15 +212,28 @@ export default function GroupDetailPage() {
   }, [groupData]);
 
   const groupMapMarkers = useMemo(() => {
-    if (!members) return [];
-    return members
-      .filter(member => member.status === 'accepted' && member.isSharingLocation && member.location)
-      .map(member => {
-        const coords = parseLocation(member.location!);
-        return coords ? { ...coords, label: member.name.split(' ')[0] } : null;
-      })
-      .filter(Boolean) as { lat: number; lng: number; label: string; }[];
-  }, [members]);
+    const markers = [];
+    
+    // Add current user's marker if they are sharing location
+    if (currentUserMemberInfo?.isSharingLocation && userProfile?.location) {
+        const coords = parseLocation(userProfile.location);
+        if (coords) markers.push({ ...coords, label: `${user?.displayName?.split(' ')[0] || 'Tú'} (Tú)` });
+    }
+
+    // Add other members' markers
+    if (members) {
+      members.forEach(member => {
+        // Exclude the current user to avoid duplicates
+        if (member.userId !== user?.uid && member.status === 'accepted' && member.isSharingLocation && member.location) {
+          const coords = parseLocation(member.location);
+          if (coords) {
+            markers.push({ ...coords, label: member.name.split(' ')[0] });
+          }
+        }
+      });
+    }
+    return markers;
+  }, [members, user, userProfile, currentUserMemberInfo]);
 
 
   useEffect(() => {
@@ -282,8 +298,6 @@ export default function GroupDetailPage() {
       }
   }
 
-  const userProfileRef = useMemoFirebase(() => (firestore && user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
-  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
   const mapCenter = useMemo(() => userProfile?.location ? parseLocation(userProfile.location) : undefined, [userProfile]);
   
   const handleUpdateGroupName = async () => {
@@ -541,3 +555,5 @@ export default function GroupDetailPage() {
     </AppShell>
   );
 }
+
+    
