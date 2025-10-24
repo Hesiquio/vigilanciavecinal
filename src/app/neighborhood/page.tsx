@@ -52,8 +52,8 @@ const NeighborhoodChat = ({ user, userProfile, firestore }: { user: any, userPro
                 <CardTitle>{chatTitle}</CardTitle>
             </CardHeader>
             <CardContent className="p-0 flex-1">
-                <div className="flex h-full flex-col">
-                    <div className="flex-1 space-y-4 p-4 overflow-y-auto max-h-[500px]">
+                <div className="flex flex-col">
+                    <div className="flex-1 space-y-4 p-4 overflow-y-auto max-h-[400px]">
                         {isLoading && <p className="text-center">Cargando mensajes...</p>}
                         {!isLoading && messages?.map((msg) => (
                            <div key={msg.id} className={cn("flex items-start gap-2", msg.userId === user.uid ? "justify-end" : "justify-start")}>
@@ -131,7 +131,3 @@ export default function NeighborhoodPage() {
     </AppShell>
   );
 }
-
-    
-
-    
